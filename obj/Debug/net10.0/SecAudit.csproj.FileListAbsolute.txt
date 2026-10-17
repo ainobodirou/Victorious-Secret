@@ -1,0 +1,6 @@
+C:\Users\denik\Desktop\SecAudit\obj\Debug\net10.0\SecAudit.csproj.AssemblyReference.cache
+C:\Users\denik\Desktop\SecAudit\obj\Debug\net10.0\SecAudit.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\denik\Desktop\SecAudit\obj\Debug\net10.0\SecAudit.AssemblyInfoInputs.cache
+C:\Users\denik\Desktop\SecAudit\obj\Debug\net10.0\SecAudit.AssemblyInfo.cs
+C:\Users\denik\Desktop\SecAudit\obj\Debug\net10.0\SecAudit.csproj.CoreCompileInputs.cache
+C:\Users\denik\Desktop\SecAudit\obj\Debug\net10.0\SecAudit.sourcelink.json
