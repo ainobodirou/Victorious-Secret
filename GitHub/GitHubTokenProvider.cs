@@ -1,12 +1,11 @@
-
-using System.Runtime.CompilerServices;
 using System.Security.Claims;
 using System.Security.Cryptography;
-using System.Net.Http;
-using System.Net;
+using System.IdentityModel.Tokens.Jwt;
 using System.Text.Json;
-using System.Text.Json.Serialization;
-using System.Text;
+using System.Net.Http.Headers;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
+
 public class GitHubTokenProvider
 {
     private readonly IOptions<GitHubAppOptions> _options;
@@ -26,16 +25,16 @@ public class GitHubTokenProvider
 
         var signingCredentials = new SigningCredentials(
             securityKey,
-            SecutityAlgorithms.RsaSha256
+            SecurityAlgorithms.RsaSha256
         );
 
         var now = DateTimeOffset.UtcNow;
 
         var claims = new[]
         {
-            new Claim("iss", _options.AppId),
-            new Claim("iat", now.AddSeconds(-60).ToUnixTimeSeconds().ToString(), ClaimValueTypes(Integer64)),
-            new Claim("exp", now.AddMinutes(9).ToUnixTimeSeconds().ToString().ClaimValueTypes.Integer64)
+            new Claim("iss", _options.Value.AppId),
+            new Claim("iat", now.AddSeconds(-60).ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64),
+            new Claim("exp", now.AddMinutes(9).ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64),
         };
 
         var jwt = new JwtSecurityToken(
@@ -43,7 +42,7 @@ public class GitHubTokenProvider
             signingCredentials: signingCredentials
         );
 
-        return new JwTSecurityTokenHandler().WriteToken(jwt);
+        return new JwtSecurityTokenHandler().WriteToken(jwt);
         
     }
 
@@ -51,29 +50,34 @@ public class GitHubTokenProvider
         long installationId
     )
     {
-        var baseAddress = "https://api.github.com/app";
-        var endpoint = "app";
-        _client.BaseAddress = new Uri(baseAddress);
-
+        var endpoint = $"app/installations/{installationId}/access_tokens";
         var appToken = GenerateAppJWt();
-        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", appToken);
 
-        var contentType = new MediaTypeWithQualityHeaderValue("application/json");
-        _client.DefaultRequestHeaders.Accept.Add(contentType);
+        using var request = new HttpRequestMessage(
+            HttpMethod.Post,
+            endpoint
+        );
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", appToken);
+        request.Headers.Accept.Add(
+            new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
 
-        var requestData = JsonConvert.SerializeObject(installationId);
-        var getData = new StringContent(requestData, Encoding.UTF-8, "application/json");
+        using var response = await _client.SendAsync(request);
+        response.EnsureSuccessStatusCode();
 
-        var response = await _client.GetAsync(endpoint,getData);
+        var stringData = await response.Content.ReadAsByteArrayAsync();
+        var tokenResponse = JsonSerializer.Deserialize<InstallationTokenResponse>(stringData);
 
-        if (response)
+        if(String.IsNullOrWhiteSpace(tokenResponse?.Token))
         {
-            var stringData = await response.Content.ReadAsStringAsync();
-            return JsonConvert.DeserializeObject<UserResponse>(stringData);
+            throw new InvalidOperationException(
+                "Failed to retrieve installation token"
+            );
         }
         else
         {
+            return tokenResponse.Token;
         }
+
 
     }
 
@@ -83,9 +87,9 @@ public class GitHubTokenProvider
         string pemKey;
         try
         {
-            pemKey = File.ReadAllText(_options.PrivateKeyPath);
+            pemKey = File.ReadAllText(_options.Value.PrivateKeyPath);
         }
-        catch
+        catch (Exception ex)
         {
             
             throw new InvalidOperationException(

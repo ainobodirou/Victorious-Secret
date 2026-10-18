@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 4,
   "targets": {
     "net10.0": {
       "Microsoft.Bcl.Cryptography/10.0.2": {
@@ -520,19 +520,19 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\denik\\.nuget\\packages\\": {}
+    "/Users/denislisovskij/.nuget/packages/": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\denik\\Desktop\\SecAudit\\SecAudit.csproj",
+      "projectUniqueName": "/Users/denislisovskij/Documents/GitHub/Victorious-Secret/SecAudit.csproj",
       "projectName": "SecAudit",
-      "projectPath": "C:\\Users\\denik\\Desktop\\SecAudit\\SecAudit.csproj",
-      "packagesPath": "C:\\Users\\denik\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\denik\\Desktop\\SecAudit\\obj\\",
+      "projectPath": "/Users/denislisovskij/Documents/GitHub/Victorious-Secret/SecAudit.csproj",
+      "packagesPath": "/Users/denislisovskij/.nuget/packages/",
+      "outputPath": "/Users/denislisovskij/Documents/GitHub/Victorious-Secret/obj/",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "C:\\Users\\denik\\AppData\\Roaming\\NuGet\\NuGet.Config"
+        "/Users/denislisovskij/.nuget/NuGet/NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net10.0"
@@ -542,6 +542,7 @@
       },
       "frameworks": {
         "net10.0": {
+          "framework": "net10.0",
           "targetAlias": "net10.0",
           "projectReferences": {}
         }
@@ -556,10 +557,11 @@
         "auditLevel": "low",
         "auditMode": "all"
       },
-      "SdkAnalysisLevel": "10.0.100"
+      "SdkAnalysisLevel": "10.0.400"
     },
     "frameworks": {
       "net10.0": {
+        "framework": "net10.0",
         "targetAlias": "net10.0",
         "dependencies": {
           "Microsoft.Extensions.Options": {
@@ -587,7 +589,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.110/PortableRuntimeIdentifierGraph.json",
+        "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/10.0.402/PortableRuntimeIdentifierGraph.json",
         "packagesToPrune": {
           "Microsoft.CSharp": "(,4.7.32767]",
           "Microsoft.VisualBasic": "(,10.4.32767]",
