@@ -21,7 +21,13 @@ public class GitHubTokenProvider
     {
         using RSA rsa = LoadPrivateKey();
 
-        var securityKey = new RsaSecurityKey(rsa);
+        var securityKey = new RsaSecurityKey(rsa)
+        {
+            CryptoProviderFactory = new CryptoProviderFactory
+            {
+                CacheSignatureProviders = false
+            }
+        };
 
         var signingCredentials = new SigningCredentials(
             securityKey,
@@ -67,7 +73,7 @@ public class GitHubTokenProvider
         var stringData = await response.Content.ReadAsByteArrayAsync();
         var tokenResponse = JsonSerializer.Deserialize<InstallationTokenResponse>(stringData);
 
-        if(String.IsNullOrWhiteSpace(tokenResponse?.Token))
+        if(String.IsNullOrWhiteSpace(tokenResponse?.token))
         {
             throw new InvalidOperationException(
                 "Failed to retrieve installation token"
@@ -75,7 +81,7 @@ public class GitHubTokenProvider
         }
         else
         {
-            return tokenResponse.Token;
+            return tokenResponse.token;
         }
 
 

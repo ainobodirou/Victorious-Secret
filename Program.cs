@@ -1,14 +1,50 @@
-﻿namespace SecAudit;
+﻿
 
-class Program
-{
-    static void Main(string[] args)
+var builder = WebApplication.CreateBuilder(args);
+
+
+
+//Register App Configuration
+builder.Services.Configure<GitHubAppOptions>(builder.Configuration.GetSection("GitHubApp"));
+
+//Add token provider
+builder.Services.AddTransient<GitHubTokenProvider>();
+
+//Configure HttpClient for GitHubTokenProvider
+builder.Services.AddHttpClient<GitHubTokenProvider>(
+    client =>
     {
-        Console.WriteLine("Hello, World!");
-    }
-    builder.Services.AddHttpClient<GitHubTokenProvider>(client =>
+        client.BaseAddress = new Uri("https://api.github.com/");
+        client.DefaultRequestHeaders.UserAgent.Add(
+            new System.Net.Http.Headers.ProductInfoHeaderValue(
+                "SecAudit",
+                "1.0"
+            )
+        );
+        client.DefaultRequestHeaders.Accept.Add(
+            new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue(
+                "application/vnd.github+json"
+            )
+        );
+    });
+builder.Services.AddControllers();
+
+
+var app = builder.Build();
+
+app.MapControllers();
+
+if (app.Environment.IsDevelopment())
 {
-    client.BaseAddress = new Uri("https://api.github.com/");
-    client.DefaultRequestHeaders.UserAgent.ParseAdd("GitHubSecurityAuditor");
-});
-}
+    app.MapGet("/debug/github-auth", (GitHubTokenProvider provider) =>
+    {
+    string token = provider.GetInstallationTokenAsync(173102585).Result;
+    return Results.Ok(  new { Success = true});
+    });
+};
+
+
+app.Run();
+
+
+
