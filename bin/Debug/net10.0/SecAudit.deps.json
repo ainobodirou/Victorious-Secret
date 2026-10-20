@@ -8,6 +8,7 @@
     ".NETCoreApp,Version=v10.0": {
       "SecAudit/1.0.0": {
         "dependencies": {
+          "Octokit": "14.0.0",
           "System.IdentityModel.Tokens.Jwt": "8.23.0"
         },
         "runtime": {
@@ -61,6 +62,14 @@
           "lib/net10.0/Microsoft.IdentityModel.Tokens.dll": {
             "assemblyVersion": "8.23.0.0",
             "fileVersion": "8.23.0.26257"
+          }
+        }
+      },
+      "Octokit/14.0.0": {
+        "runtime": {
+          "lib/netstandard2.0/Octokit.dll": {
+            "assemblyVersion": "14.0.0.0",
+            "fileVersion": "14.0.0.0"
           }
         }
       },
@@ -118,6 +127,13 @@
       "sha512": "sha512-PUowLq8gqICt+oepHWmKBOJmnVmWoQ5dOVn2CgwFMBZZOAEMHgCQLWs8ONYdsjAyjhDHaFy+AAx0OMG/oV06Zw==",
       "path": "microsoft.identitymodel.tokens/8.23.0",
       "hashPath": "microsoft.identitymodel.tokens.8.23.0.nupkg.sha512"
+    },
+    "Octokit/14.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-jGOuTH1l+TCpJH+fwYOp7USzHDuGfN1jKbLz3J2COwyn+wL08eynvpnM6rY2qkzIEXum3PN2p2QkP3BW/p9Qcw==",
+      "path": "octokit/14.0.0",
+      "hashPath": "octokit.14.0.0.nupkg.sha512"
     },
     "System.IdentityModel.Tokens.Jwt/8.23.0": {
       "type": "package",

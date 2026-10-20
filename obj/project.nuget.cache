@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "SJangrBIdjU=",
+  "dgSpecHash": "M51Jnek4rdc=",
   "success": true,
   "projectFilePath": "/Users/denislisovskij/Documents/GitHub/Victorious-Secret/SecAudit.csproj",
   "expectedPackageFiles": [
@@ -10,6 +10,7 @@
     "/Users/denislisovskij/.nuget/packages/microsoft.identitymodel.jsonwebtokens/8.23.0/microsoft.identitymodel.jsonwebtokens.8.23.0.nupkg.sha512",
     "/Users/denislisovskij/.nuget/packages/microsoft.identitymodel.logging/8.23.0/microsoft.identitymodel.logging.8.23.0.nupkg.sha512",
     "/Users/denislisovskij/.nuget/packages/microsoft.identitymodel.tokens/8.23.0/microsoft.identitymodel.tokens.8.23.0.nupkg.sha512",
+    "/Users/denislisovskij/.nuget/packages/octokit/14.0.0/octokit.14.0.0.nupkg.sha512",
     "/Users/denislisovskij/.nuget/packages/system.identitymodel.tokens.jwt/8.23.0/system.identitymodel.tokens.jwt.8.23.0.nupkg.sha512"
   ],
   "logs": [

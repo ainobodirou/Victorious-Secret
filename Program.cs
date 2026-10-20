@@ -1,4 +1,5 @@
-﻿
+﻿using Octokit;
+using Microsoft.Extensions.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,6 +10,9 @@ builder.Services.Configure<GitHubAppOptions>(builder.Configuration.GetSection("G
 
 //Add token provider
 builder.Services.AddTransient<GitHubTokenProvider>();
+
+//Add Octokit client
+builder.Services.AddTransient<GitHubClientO>();
 
 //Configure HttpClient for GitHubTokenProvider
 builder.Services.AddHttpClient<GitHubTokenProvider>(
@@ -41,8 +45,15 @@ if (app.Environment.IsDevelopment())
     string token = provider.GetInstallationTokenAsync(173102585).Result;
     return Results.Ok(  new { Success = true});
     });
-};
 
+    app.MapGet("/debug/github-repos", (GitHubClientO client) =>
+    {
+        var repositories = client.GetAllRepos(173102585).Result;
+        return Results.Ok( new{
+            Count = repositories.Count
+        });
+    }
+    );};
 
 app.Run();
 
