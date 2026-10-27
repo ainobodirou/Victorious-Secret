@@ -1,5 +1,6 @@
 ﻿using Octokit;
 using Microsoft.Extensions.DependencyInjection;
+using Octokit.Caching;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -40,20 +41,37 @@ app.MapControllers();
 
 if (app.Environment.IsDevelopment())
 {
+    string owner = "ainobodirou";
+    string name = "Victorious-Secret";
+
+
     app.MapGet("/debug/github-auth", (GitHubTokenProvider provider) =>
     {
     string token = provider.GetInstallationTokenAsync(173102585).Result;
     return Results.Ok(  new { Success = true});
     });
 
-    app.MapGet("/debug/github-repos", (GitHubClientO client) =>
+    app.MapGet("/debug/github-tree", async (GitHubClientO client) =>
     {
-        var repositories = client.GetAllRepos(173102585).Result;
-        return Results.Ok( new{
-            Count = repositories.Count
-        });
+        long installationId = 173102585;
+        var repositories = await client.GetAllRepos(installationId);
+        var repository = repositories[1];
+        
+        string commitSha = await client.GetDefaultBranchCommit(installationId,repository);
+
+        var tree = await client.GetTreeAync(installationId, repository, commitSha);
+
+        return Results.Ok(new
+        {
+           Repository = repository.FullName,
+           CommitSha = commitSha,
+           FileCount = tree.Tree.Count,
+           IsTruncated = tree.Truncated,
+        }
+        );
     }
     );};
+
 
 app.Run();
 
