@@ -33,6 +33,9 @@ builder.Services.AddHttpClient<GitHubTokenProvider>(
         );
     });
 builder.Services.AddControllers();
+builder.Services.AddTransient<ScanService>();
+builder.Services.AddTransient<SecretDetector>();
+builder.Services.AddTransient<SourcePreprocessor>();
 
 
 var app = builder.Build();
@@ -59,7 +62,7 @@ if (app.Environment.IsDevelopment())
         
         string commitSha = await client.GetDefaultBranchCommit(installationId,repository);
 
-        var tree = await client.GetTreeAync(installationId, repository, commitSha);
+        var tree = await client.GetTreeAsync(installationId, repository, commitSha);
 
         return Results.Ok(new
         {
@@ -70,7 +73,37 @@ if (app.Environment.IsDevelopment())
         }
         );
     }
-    );};
+    );
+
+    app.MapGet("debug/get-findings", async (GitHubClientO client,
+                                            ScanService ss) =>
+    {
+       long installationId = 173102585;
+       var repositories = await client.GetAllRepos(installationId);
+       var repository = repositories.First(r => 
+       r.Name == "Victorious-Secret");
+       
+       
+       string commitSha = await client.GetDefaultBranchCommit(installationId, repository);
+       var tree = await client.GetTreeAsync(installationId, repository, commitSha);
+
+       var findings = await ss.RunScan(installationId,repository,commitSha);
+
+       return Results.Ok(new
+       {
+           Repossitory = repository.FullName,
+           CommitSha = commitSha,
+           ExtractedLiteralcount = findings.Count,
+           Locations = findings.Select(f => new
+           {
+               f.FilePath,
+               f.LineNumber,
+               f.VariableName
+           })
+       });
+    }
+    );
+};
 
 
 app.Run();

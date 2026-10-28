@@ -2,6 +2,15 @@
   "version": 4,
   "targets": {
     "net10.0": {
+      "KTrie/3.0.1": {
+        "type": "package",
+        "compile": {
+          "lib/net8.0/KTrie.dll": {}
+        },
+        "runtime": {
+          "lib/net8.0/KTrie.dll": {}
+        }
+      },
       "Microsoft.Bcl.Cryptography/10.0.2": {
         "type": "package",
         "compile": {
@@ -129,6 +138,19 @@
     }
   },
   "libraries": {
+    "KTrie/3.0.1": {
+      "sha512": "PkrQQTcpkic9NucWOSGvty/8gLiCeFRMkglQZufT320AQPTuiX1CVb4+xouj2jXZM7jhJyBCuT4kshn/rcOCcg==",
+      "type": "package",
+      "path": "ktrie/3.0.1",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "ktrie.3.0.1.nupkg.sha512",
+        "ktrie.nuspec",
+        "lib/net8.0/KTrie.dll"
+      ]
+    },
     "Microsoft.Bcl.Cryptography/10.0.2": {
       "sha512": "LG9Yll3B5aNpxv0+D47g6LiOiKBIlodhcHdQwcYzo8VeexFLGqx5ymetmA2aBRyo9cCcWsQWrFsdbsr8LvmWDw==",
       "type": "package",
@@ -353,6 +375,7 @@
   },
   "projectFileDependencyGroups": {
     "net10.0": [
+      "KTrie >= 3.0.1",
       "Microsoft.Extensions.Options >= 10.0.12",
       "Octokit >= 14.0.0",
       "System.IdentityModel.Tokens.Jwt >= 8.23.0"
@@ -403,6 +426,10 @@
         "framework": "net10.0",
         "targetAlias": "net10.0",
         "dependencies": {
+          "KTrie": {
+            "target": "Package",
+            "version": "[3.0.1, )"
+          },
           "Microsoft.Extensions.Options": {
             "target": "Package",
             "version": "[10.0.12, )"

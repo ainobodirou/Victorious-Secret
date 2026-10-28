@@ -1,5 +1,7 @@
 using System.Text.RegularExpressions;
 
+// Source Preprocessor - 
+// extracts regex-matched literals and returns a loaded record of ExtractedLiteral type
 
 public class SourcePreprocessor{
     private static readonly Regex MatchPattern = new ("""(?<name>\w+)\s*=\s*"(?<value>[^"\r\n]*)" """.TrimEnd(),

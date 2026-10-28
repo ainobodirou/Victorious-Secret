@@ -55,7 +55,7 @@ public class GitHubClientO
 
     }
     // Recursively retrieve git tree for a specific repo
-    public async Task<TreeResponse> GetTreeAync(
+    public async Task<TreeResponse> GetTreeAsync(
         long installationId, Repository repository, string commitSha
     )
     {
@@ -78,6 +78,7 @@ public class GitHubClientO
             repository.Name,
             blobSha
         );
+
         if (blob.Encoding != EncodingType.Base64)
         {
             throw new NotSupportedException($"Unsupported blob encoding: {blob.Encoding.StringValue}");

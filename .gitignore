@@ -1,0 +1,80 @@
+# ==========================================
+# .NET build artifacts
+# ==========================================
+bin/
+obj/
+out/
+publish/
+artifacts/
+TestResults/
+
+*.dll
+*.pdb
+*.exe
+
+# ==========================================
+# IDE and editor files
+# ==========================================
+.vs/
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.DS_Store
+Thumbs.db
+
+# ==========================================
+# GitHub App private keys and certificates
+# ==========================================
+*.pem
+*.p12
+*.pfx
+*.key
+
+# ==========================================
+# Secrets and local environment configuration
+# ==========================================
+.env
+.env.*
+!.env.example
+
+appsettings.Development.json
+appsettings.Local.json
+appsettings.*.local.json
+
+secrets.json
+*.secrets.json
+
+# ==========================================
+# Local databases
+# ==========================================
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# ==========================================
+# Logs, caches and temporary files
+# ==========================================
+*.log
+logs/
+tmp/
+temp/
+.cache/
+__pycache__/
+*.tmp
+
+# ==========================================
+# Coverage and profiling outputs
+# ==========================================
+coverage/
+coverage.*
+*.coverage
+*.coveragexml

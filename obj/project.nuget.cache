@@ -1,9 +1,10 @@
 {
   "version": 2,
-  "dgSpecHash": "M51Jnek4rdc=",
+  "dgSpecHash": "6Rq1BLqO8Tw=",
   "success": true,
   "projectFilePath": "/Users/denislisovskij/Documents/GitHub/Victorious-Secret/SecAudit.csproj",
   "expectedPackageFiles": [
+    "/Users/denislisovskij/.nuget/packages/ktrie/3.0.1/ktrie.3.0.1.nupkg.sha512",
     "/Users/denislisovskij/.nuget/packages/microsoft.bcl.cryptography/10.0.2/microsoft.bcl.cryptography.10.0.2.nupkg.sha512",
     "/Users/denislisovskij/.nuget/packages/microsoft.extensions.options/10.0.12/microsoft.extensions.options.10.0.12.nupkg.sha512",
     "/Users/denislisovskij/.nuget/packages/microsoft.identitymodel.abstractions/8.23.0/microsoft.identitymodel.abstractions.8.23.0.nupkg.sha512",
