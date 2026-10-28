@@ -15,9 +15,8 @@ public class ProviderClassifier
             _rules.Add(rule.Prefix, new List<ProviderRule> {rule});
         }
     }
-    public ProviderRule? IdentifyProvider(SecretCandidate candidate)
+    public ProviderRule? IdentifyProvider(string value)
     {
-        string value = candidate.Literal.Value;
         var match = _rules.LongestPrefixMatch(value);
 
         if (match is null)

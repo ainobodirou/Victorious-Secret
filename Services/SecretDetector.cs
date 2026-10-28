@@ -1,17 +1,19 @@
 using Octokit;
 using Octokit.Caching;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 
 
 public class SecretDetector
 {
     private readonly SourcePreprocessor _preprocessor;
-    public SecretDetector(SourcePreprocessor preprocessor)
+    private readonly ProviderClassifier _classifier;
+    public SecretDetector(SourcePreprocessor preprocessor, ProviderClassifier classifier)
     {
         _preprocessor = preprocessor;
+        _classifier = classifier;
     }
-
     private static readonly string[] SecretKeywords =
     {
         "passwords",
@@ -33,7 +35,6 @@ public class SecretDetector
     private static bool VariableContext(string variableName)
     {
         string separated = Regex.Replace(variableName, @"([a-z0-9])([A-Z])", "$1 $2");
-
         string[] words = Regex.Split(separated, @"[^A-Za-z0-9]+");
 
         foreach(string word in words)
@@ -46,35 +47,40 @@ public class SecretDetector
         return false;
     }
 
-    public IEnumerable<SecretCandidate> Detect(SourceFile file)
+    public IEnumerable<SecretFinding> Detect(SourceFile file)
     {
         foreach(var literal in _preprocessor.Extract(file))
         {
-            SecretCandidate candidate = new SecretCandidate(
-                Literal: literal,
-                SecretContext: VariableContext(literal.VariableName),
-                Entropy: GetEntropy(literal.Value),
-                Length: literal.Value.Length
+            double entropy = GetEntropy(literal.VariableName);
+            int length = literal.Value.Length;
+            bool hasContext = VariableContext(literal.VariableName);
 
-            );
+            ProviderRule? matchedRule = _classifier.IdentifyProvider(literal.Value);
+            bool isFlag = hasContext || (length >= 10 && entropy >= 3.5);
 
-            if (!(candidate.Length >= 10 && candidate.Entropy >= 3.5))
+            if(!isFlag && matchedRule is null)
             {
                 continue;
             }
-            yield return candidate;
+            yield return new SecretFinding(
+                FilePath: literal.FilePath,
+                LineNumber: literal.LineNumber,
+                CommitSha: file.CommitSha,
+                Provider: matchedRule?.Provider ?? "undefined",
+                CredentialType: matchedRule?.CredentialType ?? "undefined",
+                Entropy: entropy,
+                HasContext: hasContext,
+                DetectionMethod: matchedRule is not null
+                                ? "ProviderPattern" 
+                                : "Generic"
+            );  
         }
-
-
     }
 
     private static double GetEntropy(string value)
     {
         if (string.IsNullOrEmpty(value))
-        {
             return 0;
-        }
-
         double length = value.Length;
         return -value
             .GroupBy(c => c)
@@ -83,5 +89,14 @@ public class SecretDetector
                 double prob = group.Count() / length;
                 return prob * Math.Log2(prob);
             });
+    }
+
+    private static bool IsFlag(SecretCandidate candidate)
+    {
+        if(!(candidate.Length >= 10 && candidate.Entropy >= 3.5))
+        {
+            return false;
+        }
+        return true;
     }
 }
