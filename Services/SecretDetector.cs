@@ -90,13 +90,4 @@ public class SecretDetector
                 return prob * Math.Log2(prob);
             });
     }
-
-    private static bool IsFlag(SecretCandidate candidate)
-    {
-        if(!(candidate.Length >= 10 && candidate.Entropy >= 3.5))
-        {
-            return false;
-        }
-        return true;
-    }
 }
