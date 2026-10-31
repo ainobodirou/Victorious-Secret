@@ -54,6 +54,31 @@ public class RuleConfig
             "SendGrid", "SG.", "API Key",
             @"\ASG\.[A-Za-z0-9_=.-]{66}\z");
 
+                
+        // Slack — Bot Token
+        yield return Rule(
+            "Slack",
+            "xoxb-",
+            "Bot User OAuth Token",
+            @"\Axoxb-[0-9A-Za-z-]{12,}\z"
+        );
+
+        // Slack — User Token
+        yield return Rule(
+            "Slack",
+            "xoxp-",
+            "User OAuth Token",
+            @"\Axoxp-[0-9A-Za-z-]{12,}\z"
+        );
+
+        // Slack — App-Level Token
+        yield return Rule(
+            "Slack",
+            "xapp-",
+            "App-Level Token",
+            @"\Axapp-[0-9A-Za-z-]{12,}\z"
+        );
+
         // DigitalOcean
         yield return Rule(
             "DigitalOcean", "dop_v1_", "Personal Access Token",

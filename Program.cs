@@ -59,7 +59,7 @@ if (app.Environment.IsDevelopment())
     {
         long installationId = 173102585;
         var repositories = await client.GetAllRepos(installationId);
-        var repository = repositories[1];
+        var repository = repositories[11];
         
         string commitSha = await client.GetDefaultBranchCommit(installationId,repository);
 
@@ -82,7 +82,7 @@ if (app.Environment.IsDevelopment())
        long installationId = 173102585;
        var repositories = await client.GetAllRepos(installationId);
        var repository = repositories.First(r => 
-       r.Name == "Victorious-Secret");
+       r.Name == "secret-test");
 
        
        string commitSha = await client.GetDefaultBranchCommit(installationId, repository);

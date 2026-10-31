@@ -16,11 +16,16 @@ public class SourcePreprocessor{
             string value = match.Groups["value"].Value;
             string variableName = match.Groups["name"].Value;
             
+            // Calculate the captured match lineNumber
+            int charIndex = match.Groups["value"].Index;
             int lineNumber = 1;
-
-            for (int i = 0; i < match.Index; i++)
+            for (int i = 0; i < charIndex; i++)
             {
-                lineNumber ++;
+                if (file.Content[i] == '\n')
+                {
+                    lineNumber ++;
+                }
+                
             }
 
             yield return new ExtractedLiteral(

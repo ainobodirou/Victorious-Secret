@@ -18,6 +18,7 @@ public class SecretDetector
         "secret",
         "token",
         "apikey",
+        "key",
         "api_key",
         "pk",
         "private_key",
@@ -52,7 +53,7 @@ public class SecretDetector
             bool hasContext = VariableContext(literal.VariableName);
             ProviderRule? matchedRule = _classifier.IdentifyProvider(literal.Value);
 
-            bool isFlag = hasContext || (length >= 10 && entropy >= 3.5);
+            bool isFlag = length >= 10 && (hasContext || entropy >= 3.7);
             if(!isFlag && matchedRule is null)
             {
                 continue;
