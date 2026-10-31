@@ -3,6 +3,13 @@ using KTrie;
 public class ProviderClassifier
 {
     private readonly TrieDictionary<List<ProviderRule>> _rules = new();
+    public ProviderClassifier()
+    {
+        foreach(ProviderRule rule in RuleConfig.GetRules())
+        {
+            RegisterRule(rule);
+        }
+    }
 
     public void RegisterRule(ProviderRule rule)
     {

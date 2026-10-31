@@ -1,7 +1,3 @@
-using Octokit;
-using Octokit.Caching;
-using System.Collections.Generic;
-using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 
 
@@ -14,9 +10,9 @@ public class SecretDetector
         _preprocessor = preprocessor;
         _classifier = classifier;
     }
-    private static readonly string[] SecretKeywords =
+    private static readonly HashSet<string> SecretKeywords = new (StringComparer.OrdinalIgnoreCase)
     {
-        "passwords",
+        "password",
         "passwd",
         "pwd",
         "secret",
@@ -51,17 +47,17 @@ public class SecretDetector
     {
         foreach(var literal in _preprocessor.Extract(file))
         {
-            double entropy = GetEntropy(literal.VariableName);
             int length = literal.Value.Length;
+            double entropy = GetEntropy(literal.VariableName);
             bool hasContext = VariableContext(literal.VariableName);
-
             ProviderRule? matchedRule = _classifier.IdentifyProvider(literal.Value);
-            bool isFlag = hasContext || (length >= 10 && entropy >= 3.5);
 
+            bool isFlag = hasContext || (length >= 10 && entropy >= 3.5);
             if(!isFlag && matchedRule is null)
             {
                 continue;
             }
+
             yield return new SecretFinding(
                 FilePath: literal.FilePath,
                 LineNumber: literal.LineNumber,

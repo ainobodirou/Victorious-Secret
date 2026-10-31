@@ -36,6 +36,7 @@ builder.Services.AddControllers();
 builder.Services.AddTransient<ScanService>();
 builder.Services.AddTransient<SecretDetector>();
 builder.Services.AddTransient<SourcePreprocessor>();
+builder.Services.AddSingleton<ProviderClassifier>();
 
 
 var app = builder.Build();
@@ -82,10 +83,9 @@ if (app.Environment.IsDevelopment())
        var repositories = await client.GetAllRepos(installationId);
        var repository = repositories.First(r => 
        r.Name == "Victorious-Secret");
-       
+
        
        string commitSha = await client.GetDefaultBranchCommit(installationId, repository);
-       var tree = await client.GetTreeAsync(installationId, repository, commitSha);
 
        var findings = await ss.RunScan(installationId,repository,commitSha);
 
@@ -98,7 +98,10 @@ if (app.Environment.IsDevelopment())
            {
                f.FilePath,
                f.LineNumber,
-               f.VariableName
+               f.CredentialType,
+               f.Entropy,
+               f.HasContext,
+               f.DetectionMethod
            })
        });
     }

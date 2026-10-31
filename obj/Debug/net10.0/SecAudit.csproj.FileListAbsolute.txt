@@ -41,3 +41,4 @@ C:/Users/denik/Desktop/SecAudit/obj/Debug/net10.0/SecAudit.sourcelink.json
 /Users/denislisovskij/Documents/GitHub/Victorious-Secret/obj/Debug/net10.0/SecAudit.genruntimeconfig.cache
 /Users/denislisovskij/Documents/GitHub/Victorious-Secret/obj/Debug/net10.0/ref/SecAudit.dll
 /Users/denislisovskij/Documents/GitHub/Victorious-Secret/bin/Debug/net10.0/Octokit.dll
+/Users/denislisovskij/Documents/GitHub/Victorious-Secret/bin/Debug/net10.0/KTrie.dll
