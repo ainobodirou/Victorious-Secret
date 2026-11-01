@@ -50,7 +50,7 @@ public class ScanService
             }
                 catch (DecoderFallbackException)
             {
-                // File isnt valid UTF-8, skip for now
+                //File isnt valid UTF-8, skip for now
                 //Later: handle in reporting unscanned part of the repository
                 continue;
             }
