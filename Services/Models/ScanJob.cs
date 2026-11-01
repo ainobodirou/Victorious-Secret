@@ -1,8 +1,10 @@
 
+using Octokit;
+
 public record ScanJob(
-    long installationId,
-    string name,
-    string commitSha,
+    long InstallationId,
+    string CommitSha,
+    Repository Repository,
     DateTime createdAt,
     DateTime finishedAt
 );
