@@ -59,9 +59,13 @@ public class ScanController: Controller
         }
         return Accepted(new
         {
-        
             Message = $"Scan Jobs queued: {queued}"
         });
+    }
+
+    public async Task<IActionResult> RequestScanForRepoAsync(long installaitonId, string name, CancellationToken cancellationToken)
+    {
+        Repository repository = await _client.GetRepoAsync(installaitonId, name);
     }
 
 }

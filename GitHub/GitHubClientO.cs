@@ -34,10 +34,10 @@ public class GitHubClientO
         return response.Repositories;
     }
     //Get a specific repository provided insallation id, owner and name.
-    public async Task<Repository> GetRepoAsync(long installationId, string owner, string repo)
+    public async Task<Repository> GetRepoAsync(long installationId, string owner, string name)
     {
         var client = await CreateClientAsync(installationId);
-        return await client.Repository.Get(owner, repo);
+        return await client.Repository.Get(owner, name);
     }
 
     //Retrieve last commit on provided repositories last branch
