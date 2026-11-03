@@ -22,10 +22,10 @@ public class ScanService
         ".env", ".txt", ".config"
     };
 
-    public async Task<List<SecretFinding>> RunScan(long installationId, Repository repository, string commitSha)
+    public async Task<List<SecretFinding>> RunScan(long installationId, string login, string name, string commitSha)
     {
         List<SecretFinding> allFindings = new();
-        TreeResponse tree = await _client.GetTreeAsync(installationId, repository, commitSha);
+        TreeResponse tree = await _client.GetTreeAsync(installationId, login, name, commitSha);
 
         if (tree.Truncated)
             throw new InvalidOperationException("Git Tree is truncated: cannot complete scan");
@@ -46,7 +46,7 @@ public class ScanService
             string content;
             try
             {
-                content = await _client.GetFileContentAsync(installationId, repository, item.Sha);
+                content = await _client.GetFileContentAsync(installationId, login, name, item.Sha);
             }
                 catch (DecoderFallbackException)
             {

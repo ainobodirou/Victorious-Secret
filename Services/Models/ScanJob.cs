@@ -2,10 +2,11 @@
 using Octokit;
 
 public record ScanJob(
-    Guid jobId,
+    Guid JobId,
     long InstallationId,
     string CommitSha,
-    Repository Repository,
-    DateTime createdAt,
-    DateTime? finishedAt = null
+    string Name,
+    string Login,
+    DateTime CreatedAt,
+    DateTime? FinishedAt = null
 );

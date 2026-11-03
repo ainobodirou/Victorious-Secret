@@ -44,7 +44,8 @@ public class ScanController: Controller
                 Guid.NewGuid(),
                 installationId,
                 commitSha,
-                repo,
+                repo.Name,
+                repo.Owner.Login,
                 DateTime.Now
             );
             try
@@ -63,9 +64,9 @@ public class ScanController: Controller
         });
     }
 
-    public async Task<IActionResult> RequestScanForRepoAsync(long installaitonId, string name, CancellationToken cancellationToken)
-    {
-        Repository repository = await _client.GetRepoAsync(installaitonId, name);
-    }
+            // public async Task<IActionResult> RequestScanForRepoAsync(long installaitonId, string name, CancellationToken cancellationToken)
+            // {
+            //     Repository repository = await_client.GetRepoAsync(installaitonId, owner, name);
+            // }
 
 }

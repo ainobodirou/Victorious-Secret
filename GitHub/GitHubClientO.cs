@@ -56,26 +56,26 @@ public class GitHubClientO
     }
     // Recursively retrieve git tree for a specific repo
     public async Task<TreeResponse> GetTreeAsync(
-        long installationId, Repository repository, string commitSha
+        long installationId,string login, string name, string commitSha
     )
     {
         var client = await CreateClientAsync(installationId);
 
         TreeResponse tree = await client.Git.Tree.GetRecursive(
-            repository.Owner.Login,
-            repository.Name,
+            login,
+            name,
             commitSha
         );
 
         return tree;
     }
-    public async Task<string> GetFileContentAsync(long installaitonId, Repository repository, string blobSha)
+    public async Task<string> GetFileContentAsync(long installaitonId, string login, string name, string blobSha)
     {
         var client = await CreateClientAsync(installaitonId);
         // retrieve and decode files 
         Blob blob = await client.Git.Blob.Get(
-            repository.Owner.Login,
-            repository.Name,
+            login,
+            name,
             blobSha
         );
 

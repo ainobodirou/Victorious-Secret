@@ -23,12 +23,13 @@ public ScanWorker(ScanJobQueueSevice queue, IServiceScopeFactory scope)
                 var scanJob = await _queue.DequeueScanJobAsync(cancellationToken);
                 long installationId = scanJob.InstallationId;
                 string commitSha = scanJob.CommitSha;
-                Repository repository = scanJob.Repository;
+                string name = scanJob.Name;
+                string login = scanJob.Login;
 
                 using var scope = _scope.CreateScope();
                 var service = scope.ServiceProvider.GetRequiredService<ScanService>();
 
-                await service.RunScan(installationId, repository, commitSha);
+                await service.RunScan(installationId, login, name, commitSha);
             }
             catch (OperationCanceledException)
                 when (cancellationToken.IsCancellationRequested)
