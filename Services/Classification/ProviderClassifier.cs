@@ -24,6 +24,10 @@ public class ProviderClassifier
     }
     public ProviderRule? IdentifyProvider(string value)
     {
+        if (string.IsNullOrEmpty(value))
+        {
+            return null;
+        }
         var match = _rules.LongestPrefixMatch(value);
 
         if (match is null)

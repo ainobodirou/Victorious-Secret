@@ -31,7 +31,16 @@ public class SecretDetector
 
     private static bool VariableContext(string variableName)
     {
-        string separated = Regex.Replace(variableName, @"([a-z0-9])([A-Z])", "$1 $2");
+        string separated = Regex.Replace(variableName,
+        @"([A-Z]+)([A-Z][a-z])",
+        "$1 $2"
+        );
+
+        separated = Regex.Replace(
+        separated,
+        @"([a-z0-9])([A-Z])",
+        "$1 $2"
+        );
         string[] words = Regex.Split(separated, @"[^A-Za-z0-9]+");
 
         foreach(string word in words)
@@ -48,12 +57,17 @@ public class SecretDetector
     {
         foreach(var literal in _preprocessor.Extract(file))
         {
+            if (string.IsNullOrEmpty(literal.Value))
+            {
+                continue;
+            }
+            
             int length = literal.Value.Length;
-            double entropy = GetEntropy(literal.VariableName);
+            double entropy = GetEntropy(literal.Value);
             bool hasContext = VariableContext(literal.VariableName);
             ProviderRule? matchedRule = _classifier.IdentifyProvider(literal.Value);
 
-            bool isFlag = length >= 10 && (hasContext || entropy >= 3.7);
+            bool isFlag = length >= 10 && hasContext && entropy >= 3.7;
             if(!isFlag && matchedRule is null)
             {
                 continue;
