@@ -22,7 +22,7 @@ public class ScanService
         ".env", ".txt", ".config"
     };
 
-    public async Task<List<SecretFinding>> RunScan(long installationId, string login, string name, string commitSha)
+    public async Task<List<SecretFinding>> RunScan(long installationId, string login, string name, string commitSha, Guid jobId)
     {
         List<SecretFinding> allFindings = new();
         TreeResponse tree = await _client.GetTreeAsync(installationId, login, name, commitSha);
@@ -59,8 +59,11 @@ public class ScanService
                 content,
                 commitSha
             ); 
-            var findings = _detector.Detect(sourceFile);
-            allFindings.AddRange(findings);
+
+            //Link the findings with the associated jobId
+            allFindings.AddRange(
+                _detector.Detect(sourceFile).Select(f => f with {JobId = jobId})
+            );
         }
         return allFindings;
     }

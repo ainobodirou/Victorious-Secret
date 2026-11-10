@@ -9,5 +9,7 @@ public record SecretFinding(
     double Entropy,
     bool HasContext,
     string DetectionMethod
-
-);
+)
+{
+public Guid? JobId { get; init; }
+}   
