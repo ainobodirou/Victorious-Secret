@@ -12,7 +12,10 @@
     <PackageReference Include="KTrie" Version="3.0.1" />
     <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.12" />
     <PackageReference Include="Octokit" Version="14.0.0" />
+    <PackageReference Include="Octokit.Webhooks.AspNetCore" Version="4.2.3" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.23.0" />
-  </ItemGroup>
+    <Compile Remove="VictoriousSecret.Cli/**/*.cs" />
+    <Compile Remove="VictoriousSecret.Tests/**/*.cs" />
+</ItemGroup>
 
 </Project>
