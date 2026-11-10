@@ -5,6 +5,8 @@ using System.Text.Json;
 using System.Net.Http.Headers;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using System.Collections.Concurrent;
+using System.Globalization;
 
 public class GitHubTokenProvider
 {
@@ -17,8 +19,16 @@ public class GitHubTokenProvider
         _options = appOptions;
         _client  = appClient;
     }
+    static readonly ConcurrentDictionary <long, CachedToken> _tokenCache = new();
+
+    private record CachedToken(
+        string AccessToken,
+        DateTimeOffset expiresAt
+    );
+
     public string GenerateAppJWt()
     {
+
         using RSA rsa = LoadPrivateKey();
 
         var securityKey = new RsaSecurityKey(rsa)
@@ -56,6 +66,12 @@ public class GitHubTokenProvider
         long installationId
     )
     {
+        if (_tokenCache.TryGetValue(installationId, out var token)
+            && token.expiresAt > DateTimeOffset.UtcNow.AddMinutes(1))
+        {
+            return token.AccessToken;
+        }
+
         var endpoint = $"app/installations/{installationId}/access_tokens";
         var appToken = GenerateAppJWt();
 
@@ -81,9 +97,14 @@ public class GitHubTokenProvider
         }
         else
         {
-            return tokenResponse.token;
+            DateTimeOffset expiresAt = DateTimeOffset.Parse(tokenResponse.expires_at, CultureInfo.InvariantCulture);
+            var cachedToken = new CachedToken(
+                tokenResponse.token,
+                expiresAt
+            );
+            _tokenCache[installationId] = cachedToken;
+            return cachedToken.AccessToken;
         }
-
 
     }
 

@@ -1,16 +1,14 @@
-﻿using Octokit;
-using Microsoft.Extensions.DependencyInjection;
-using Octokit.Caching;
-using Octokit.Webhooks;
+﻿using Octokit.Webhooks;
 using Octokit.Webhooks.AspNetCore;
+using Microsoft.AspNetCore.Authentication;
 
 var builder = WebApplication.CreateBuilder(args);
 //Register App Configuration
 builder.Services.Configure<GitHubAppOptions>(builder.Configuration.GetSection("GitHubApp"));
 //Add token provider
-builder.Services.AddTransient<GitHubTokenProvider>();
+builder.Services.AddSingleton<GitHubTokenProvider>();
 //Add Octokit client
-builder.Services.AddTransient<GitHubClientO>();
+builder.Services.AddSingleton<GitHubClientO>();
 //Configure HttpClient for GitHubTokenProvider
 builder.Services.AddHttpClient<GitHubTokenProvider>(
     client =>
@@ -29,10 +27,21 @@ builder.Services.AddHttpClient<GitHubTokenProvider>(
         );
     });
 
+
+builder.Services
+    .AddAuthentication("GitHub")
+    .AddScheme<AuthenticationSchemeOptions, GitHubAuthHandler>(
+        "GitHub",
+        options => { });
+
+builder.Services.AddAuthorization();
+builder.Services.AddHttpClient();
+
 builder.Services.AddControllers();
 builder.Services.AddTransient<ScanService>(); //Main Scan Orchestrator for all inputs
 builder.Services.AddTransient<SecretDetector>(); //Secret Detection handling and logic
 builder.Services.AddTransient<SourcePreprocessor>(); //Sourcecode preprocessing
+builder.Services.AddSingleton<ScanJobStore>(); //Local ScanJob Store
 builder.Services.AddSingleton<ProviderClassifier>(); //Trie & regex-based provider classification
 builder.Services.AddSingleton(
     new ScanJobQueueSevice(100) //Scan job queue
@@ -45,6 +54,8 @@ string webhookSecret = builder.Configuration["GitHubApp:WebhookSecret"] ??
 
 var app = builder.Build();
 
+app.UseAuthentication();
+app.UseAuthorization();
 app.MapControllers();
 app.MapGitHubWebhooks(
     path: "/api/github/webhooks",
@@ -87,39 +98,39 @@ if (app.Environment.IsDevelopment())
     }
     );
 
-    app.MapGet("debug/get-findings", async (GitHubClientO client,
-                                            ScanService ss) =>
-    {
-       long installationId = 173102585;
-       var repositories = await client.GetAllRepos(installationId);
-       var repository = repositories.First(r => 
-       r.Name == "secret-test");
+//     app.MapGet("debug/get-findings", async (GitHubClientO client,
+//                                             ScanService ss) =>
+//     {
+//        long installationId = 173102585;
+//        var repositories = await client.GetAllRepos(installationId);
+//        var repository = repositories.First(r => 
+//        r.Name == "secret-test");
 
        
-       string commitSha = await client.GetDefaultBranchCommit(installationId, repository);
+//        string commitSha = await client.GetDefaultBranchCommit(installationId, repository);
 
-       var findings = await ss.RunScan(installationId, repository.Owner.Login, repository.Name ,commitSha);
+//        var findings = await ss.RunScan(installationId, repository.Owner.Login, repository.Name ,commitSha, jobId);
 
-       return Results.Ok(new
-       {
-           Repossitory = repository.FullName,
-           CommitSha = commitSha,
-           ExtractedLiteralcount = findings.Count,
-           Locations = findings.Select(f => new
-           {
-               f.FilePath,
-               f.LineNumber,
-               f.CredentialType,
-               f.Entropy,
-               f.HasContext,
-               f.DetectionMethod
-           })
-       });
-    }
-    );
-};
+//        return Results.Ok(new
+//        {
+//            Repossitory = repository.FullName,
+//            CommitSha = commitSha,
+//            ExtractedLiteralcount = findings.Count,
+//            Locations = findings.Select(f => new
+//            {
+//                f.FilePath,
+//                f.LineNumber,
+//                f.CredentialType,
+//                f.Entropy,
+//                f.HasContext,
+//                f.DetectionMethod
+//            })
+//        });
+//     }
+//     );
+// };
 
-
+}
 app.Run();
 
 

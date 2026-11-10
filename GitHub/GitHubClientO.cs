@@ -1,4 +1,5 @@
 using Octokit;
+using System.Collections.Concurrent;
 using System.Data.SqlTypes;
 using System.Runtime.Intrinsics.Arm;
 using System.Text;
@@ -8,6 +9,7 @@ using OctokitClient = Octokit.GitHubClient;
 public class GitHubClientO
 {
     private readonly GitHubTokenProvider _tokenProvider;
+    public readonly ConcurrentDictionary<long, (string token, OctokitClient Client)> client_cache = new();
 
     public GitHubClientO(GitHubTokenProvider tokenProvider)
     {
@@ -16,18 +18,28 @@ public class GitHubClientO
 
     //Create Octokit client
     //v2: Encapsulate and replace with client factory instance through CI 
- 
     public async Task<OctokitClient> CreateClientAsync(long installationId)
     {
-        string token = await _tokenProvider.GetInstallationTokenAsync(installationId);
-        var client = new OctokitClient(new Octokit.ProductHeaderValue("VictoriousSecret"));
-
-        client.Credentials = new Credentials(token);
+        var check_token = await _tokenProvider.GetInstallationTokenAsync(installationId);
+        if(client_cache.TryGetValue(installationId, out var cached) && cached.token == check_token)
+        {
+            return cached.Client;
+        }
+        var client = new OctokitClient(new ProductHeaderValue("VictoriousSecret"));
+        client.Credentials = new Credentials(check_token);
+        client_cache[installationId] = (check_token,client);
         return client;
     }
+    public OctokitClient CreateUserClient(string userToken)
+    {
+        var client = new OctokitClient(new ProductHeaderValue("VictoriousSecret"));
+        client.Credentials = new Credentials(userToken);
+        return client;
+    }
+    
     //List all repositories available for the supplied installationId
     public async Task<IReadOnlyList<Repository>> GetAllRepos(long installationId)
-    {
+    {   
         var client = await CreateClientAsync(installationId);
         var response = await client.GitHubApps.Installation.GetAllRepositoriesForCurrent();
 
