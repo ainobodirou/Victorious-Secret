@@ -1,24 +1,25 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Channels;
-using System.Web;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Octokit;
 
 namespace ScanController;
 
 [ApiController]
-[Route("[controller]")]
+[Authorize]
+[Route("api/scan")]
 public class ScanController: Controller
 {
     private readonly GitHubClientO _client;
     private readonly ScanJobQueueSevice _queue;
+    private readonly ScanJobStore _store;
 
-    public ScanController(GitHubClientO client, ScanJobQueueSevice queue)
+    public ScanController(GitHubClientO client, ScanJobQueueSevice queue, ScanJobStore store)
     {
         _client = client;
         _queue = queue;
+        _store = store;
     }
 
     // POST: api/scans/all
@@ -26,6 +27,7 @@ public class ScanController: Controller
     public async Task<IActionResult> RequestScanForAllAsync(long installationId, CancellationToken cancellationToken)
     {
         int queued = 0;
+        List<Guid> scanJobs = [];
         IReadOnlyList<Repository> repositories = await _client.GetAllRepos(installationId);
         foreach (Repository repo in repositories)
         {
@@ -39,7 +41,6 @@ public class ScanController: Controller
                 //No accessible repository, possibly empy - Skip.
                 continue;
             }
-
             ScanJob scanJob = new ScanJob(
                 Guid.NewGuid(),
                 installationId,
@@ -48,25 +49,60 @@ public class ScanController: Controller
                 repo.Owner.Login,
                 DateTime.Now
             );
+
+            _store.Add(scanJob);
             try
             {
                 await _queue.QueueScanJobAsync(scanJob, cancellationToken);
+                scanJobs.Add(scanJob.JobId);
+                queued +=1;
+
             }
             catch (ChannelClosedException)
             {
-                return StatusCode(503, $"Scan Queue channel closed, but queued {queued} jobs");
+                _store.UpdateStatus(scanJob.JobId, ScanStatus.Failed);
+                return StatusCode(503, $"Scan Queue channel closed, but queued {scanJobs.Count} jobs");
             }
-            queued += 1;
         }
         return Accepted(new
         {
-            Message = $"Scan Jobs queued: {queued}"
+            Message = $"Scan Jobs queued: {scanJobs.Count}",
+            scanJobs
+
         });
     }
-
-            // public async Task<IActionResult> RequestScanForRepoAsync(long installaitonId, string name, CancellationToken cancellationToken)
-            // {
-            //     Repository repository = await_client.GetRepoAsync(installaitonId, owner, name);
-            // }
-
+    [HttpPost("findings")]
+    public IActionResult GetFindings([FromBody] List<Guid> jobIds)
+    {
+        List<SecretFinding> findings = [];
+        Dictionary<Guid ,string> failed = new();
+        bool inProgress = false;
+        foreach(Guid jobId in jobIds)
+        {
+            ScanJob? scanJob = _store.Get(jobId);
+            if(scanJob is null)
+            {
+                return NotFound($"Job not found: {scanJob}");
+            }
+            if(scanJob.Status == ScanStatus.Failed)
+            {
+                failed.TryAdd(scanJob.JobId, scanJob.Name);
+                continue;
+            }
+            if(scanJob.Status != ScanStatus.Completed)
+            {
+                inProgress = true;
+            }
+            findings.AddRange(scanJob.Findings);
+        }
+        if (inProgress)
+        {
+            return Accepted("Scans still in proces...");
+        }
+        return Ok(new
+        {
+            findings,
+            failed,
+        });
+        }
 }
