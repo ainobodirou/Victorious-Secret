@@ -5,6 +5,10 @@ using Microsoft.AspNetCore.Authentication;
 var builder = WebApplication.CreateBuilder(args);
 //Register App Configuration
 builder.Services.Configure<GitHubAppOptions>(builder.Configuration.GetSection("GitHubApp"));
+//Add simple memory cache for auth result caching
+builder.Services.AddMemoryCache();
+//Add GitHub checkRun service
+builder.Services.AddSingleton<GitHubCheckRunService>();
 //Add token provider
 builder.Services.AddSingleton<GitHubTokenProvider>();
 //Add Octokit client

@@ -1,57 +1,132 @@
 using Octokit;
 
-//ScanWorker - Background Service implementation with scoped DI for ScanService
-//Dequeues ScanJobs
-
-public sealed class ScanWorker: BackgroundService
+public sealed class ScanWorker : BackgroundService
 {
     private readonly ScanJobQueueSevice _queue;
     private readonly IServiceScopeFactory _scope;
+    private readonly ScanJobStore _store;
+    private readonly GitHubCheckRunService _checkrun;
 
-public ScanWorker(ScanJobQueueSevice queue, IServiceScopeFactory scope)
-{
-    _queue = queue;
-    _scope = scope;
-}
-
-    protected override async Task ExecuteAsync(CancellationToken cancellationToken)
+    public ScanWorker(
+        ScanJobQueueSevice queue,
+        IServiceScopeFactory scope,
+        ScanJobStore store,
+        GitHubCheckRunService checkrun)
     {
-        while (!cancellationToken.IsCancellationRequested)
+        _queue = queue;
+        _scope = scope;
+        _store = store;
+        _checkrun = checkrun;
+    }
+
+    protected override async Task ExecuteAsync(CancellationToken ct)
+    {
+        while (!ct.IsCancellationRequested)
         {
+            ScanJob job;
             try
             {
-                var scanJob = await _queue.DequeueScanJobAsync(cancellationToken);
-                long installationId = scanJob.InstallationId;
-                string commitSha = scanJob.CommitSha;
-                string name = scanJob.Name;
-                string login = scanJob.Login;
-
-                using var scope = _scope.CreateScope();
-                var service = scope.ServiceProvider.GetRequiredService<ScanService>();
-
-                await service.RunScan(installationId, login, name, commitSha);
+                job = await _queue.DequeueScanJobAsync(ct);
             }
             catch (OperationCanceledException)
-                when (cancellationToken.IsCancellationRequested)
+                when (ct.IsCancellationRequested)
             {
                 break;
             }
-            catch (RateLimitExceededException ex)
+            try
             {
-                Console.WriteLine($"GitHub rate limit exceeded, status: {(int)ex.StatusCode}");
-                Console.WriteLine($"Rate limit resets at: {ex.Reset}");
+                await ProcessJobAsync(job);
             }
-            catch (ApiException ex)
+            catch (OperationCanceledException)
+                when (ct.IsCancellationRequested)
             {
-                Console.WriteLine($"GitHub API returned: {(int)ex.StatusCode}");
-                Console.WriteLine($"Error: {ex.Message}");
+                break;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Unexpected Scan failure: {ex.Message}");
+                _store.UpdateStatus(job.JobId, ScanStatus.Failed);
+                Console.Error.WriteLine($"Unexpected worker error for {job.JobId}: {ex}");
             }
-
-                
         }
-    } 
-}   
+    }
+
+    private async Task ProcessJobAsync(ScanJob job)
+    {
+        if (!_store.UpdateStatus(job.JobId, ScanStatus.Running))
+        {
+            throw new InvalidOperationException($"Job {job.JobId} not found in store.");
+        }
+        long? checkRunId = null;
+        if (job.IsWebhook)
+        {
+            try
+            {
+            checkRunId = await _checkrun.CreateCheckRunAsync(
+                job.InstallationId,
+                job.Login,
+                job.Name,
+                job.CommitSha
+            );
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Could not create Check Run: {ex.Message}");
+        } 
+        }
+        List<SecretFinding>? findings = null;
+        try
+        {
+            using var scope = _scope.CreateScope();
+
+            var service = scope.ServiceProvider
+                .GetRequiredService<ScanService>();
+
+            var results = await service.RunScan(
+                job.InstallationId,
+                job.Login,
+                job.Name,
+                job.CommitSha,
+                job.JobId
+            );
+
+            if (!_store.Completion(job.JobId, results))
+            {
+                throw new InvalidOperationException($"Could not store results for {job.JobId}");
+            }
+            findings = results;
+        }
+        catch (Exception ex)
+        {
+            _store.UpdateStatus(job.JobId, ScanStatus.Failed);
+            Console.Error.WriteLine($"Scan failed for {job.Login}/{job.Name}: {ex}");
+        }
+        if (checkRunId.HasValue)
+        {
+            try
+            {
+                CheckConclusion conclusion = findings is null
+                    ? CheckConclusion.Failure
+                    : findings.Count == 0
+                        ? CheckConclusion.Success
+                        : CheckConclusion.Failure;
+
+                await _checkrun.UpdateCheckRunAsync(
+                    job.InstallationId,
+                    job.Login,
+                    job.Name,
+                    checkRunId.Value,
+                    conclusion,
+                    findings
+                );
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"Could not update Check Run: {ex.Message}");
+            }
+        }
+        if (findings is not null)
+        {
+            Console.WriteLine($"Scan completed for {job.Login}/{job.Name}. Findings: {findings.Count}");
+        }
+    }
+}

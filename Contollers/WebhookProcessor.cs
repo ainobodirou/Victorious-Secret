@@ -5,12 +5,13 @@ using Octokit.Webhooks.Events;
 public sealed class WebhookProcessor: WebhookEventProcessor
 {
     private readonly ScanJobQueueSevice _queue;
-    private readonly GitHubAppOptions _options;
+    private readonly ScanJobStore _store;
 
-    public WebhookProcessor(ScanJobQueueSevice queue, GitHubAppOptions options)
+    public WebhookProcessor(ScanJobQueueSevice queue, ScanJobStore store)
     {
         _queue = queue;
-        _options = options; // Supply GitHubOptions in case we'll need extra info from Github.
+        _store = store;
+        // Supply GitHubOptions later in case we'll need extra info from Github.
 
     }
     protected override async ValueTask ProcessPushWebhookAsync(WebhookHeaders headers, PushEvent pushEvent, CancellationToken cancellationToken = default)
@@ -30,8 +31,20 @@ public sealed class WebhookProcessor: WebhookEventProcessor
             pushEvent.Repository.Name,
             pushEvent.Repository.Owner.Login,
             DateTime.UtcNow
-        );
+        )
+        {
+            IsWebhook = true
+        };
+        _store.Add(scanJob);
+        try
+        {
+            await _queue.QueueScanJobAsync(scanJob, cancellationToken);
+        }
+        catch
+        {
+            _store.UpdateStatus(scanJob.JobId, ScanStatus.Failed);
+            throw;
+        }
+        }
 
-        await _queue.QueueScanJobAsync(scanJob, cancellationToken);
-    }
 }
