@@ -1,0 +1,31 @@
+services:
+  api:
+    image: vs-api:v1.0
+    build: .
+    ports:
+      - "127.0.0.1:5000:5000"
+    volumes:
+      - ./appsettings.json:/src/appsettings.json:ro
+      - ./secrets/github-app.pem:/run/secrets/github-app.pem:ro
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+  ngrok:
+    image: ngrok/ngrok:3
+    profiles: ["webhooks"]
+    command:
+      - http
+      - http://api:5000
+      - --traffic-policy-file
+      - /etc/ngrok/policy.yml
+    environment:
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
+    volumes:
+      - ./ngrok-policy.yml:/etc/ngrok/policy.yml:ro
+    depends_on:
+      api:
+        condition: service_healthy

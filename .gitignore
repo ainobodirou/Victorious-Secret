@@ -19,7 +19,6 @@ TestResults/
 .idea/
 .vscode/*
 !.vscode/extensions.json
-!.vscode/launch.json
 !.vscode/tasks.json
 
 *.user
@@ -47,6 +46,7 @@ Thumbs.db
 appsettings.Development.json
 appsettings.Local.json
 appsettings.*.local.json
+appsettings.json
 
 secrets.json
 *.secrets.json

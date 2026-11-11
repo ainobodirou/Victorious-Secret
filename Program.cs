@@ -3,6 +3,7 @@ using Octokit.Webhooks.AspNetCore;
 using Microsoft.AspNetCore.Authentication;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddHealthChecks();
 //Register App Configuration
 builder.Services.Configure<GitHubAppOptions>(builder.Configuration.GetSection("GitHubApp"));
 //Add simple memory cache for auth result caching
@@ -65,44 +66,7 @@ app.MapGitHubWebhooks(
     path: "/api/github/webhooks",
     secret: webhookSecret
 );
-
-if (app.Environment.IsDevelopment())
-{
-    string owner = "ainobodirou";
-    string name = "Victorious-Secret";
-
-
-    app.MapGet("/debug/github-auth", (GitHubTokenProvider provider) =>
-    {
-    string token = provider.GetInstallationTokenAsync(173102585).Result;
-    return Results.Ok(  new { Success = true});
-    });
-
-    app.MapGet("/debug/github-tree", async (GitHubClientO client) =>
-    {
-        long installationId = 173102585;
-        var repositories = await client.GetAllRepos(installationId);
-        var repository = repositories[11];
-        string login = repository.Owner.Login;
-        string name = repository.Name;
-
-        
-        string commitSha = await client.GetDefaultBranchCommit(installationId,repository);
-
-        var tree = await client.GetTreeAsync(installationId, login, name, commitSha);
-
-        return Results.Ok(new
-        {
-           Repository = repository.FullName,
-           CommitSha = commitSha,
-           FileCount = tree.Tree.Count,
-           IsTruncated = tree.Truncated,
-        }
-        );
-    }
-    );
-
-}
+app.MapHealthChecks("/api/health");
 app.Run();
 
 

@@ -1,0 +1,14 @@
+**bin/
+**obj/
+secrets/
+.git/
+.gitignore
+.vs/
+.vscode/
+*.md
+*.pem
+Dockerfile*
+.dockerignore
+appsettings.json
+.env
+.env.*

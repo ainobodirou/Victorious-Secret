@@ -1,0 +1,14 @@
+{
+    "GitHubApp": {
+        "AppId": "_app_id",
+        "PrivateKeyPath": "/run/secrets/github-app.pem",
+        "WebhookSecret": "configured-webhook-secret"
+        
+    },
+    "Logging": {
+        "LogLevel":{
+            "Default":"Information",
+            "Microsoft.AspNetCore": "Warning"
+        }
+    }
+}
