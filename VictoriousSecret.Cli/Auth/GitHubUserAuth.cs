@@ -1,6 +1,5 @@
 using System.Net.Http.Headers;
 using System.Text.Json;
-using System.Linq;
 
 public class GitHubUserAuth
 {
@@ -14,7 +13,7 @@ public class GitHubUserAuth
     }
 
     //Initiate device auth flow - request device_code and user_access token verification
-    public async Task<DeviceAuthResponse> RequestDeviceAuthAsync()
+    public async Task<DeviceAuthResponse> RequestDeviceAuthAsync(CancellationToken cancellationToken = default)
     {
         var endpoint = $"https://github.com/login/device/code?client_id={Uri.EscapeDataString(_clientId)}";
         using var request = new HttpRequestMessage(
@@ -24,30 +23,24 @@ public class GitHubUserAuth
         request.Headers.Accept.Add(
             new MediaTypeWithQualityHeaderValue("application/json")
         );
-        try
+        using HttpResponseMessage response = await _client.SendAsync(request, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        var stringData = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+        var deviceAuthResponse = JsonSerializer.Deserialize<DeviceAuthResponse>(stringData);
+        if (string.IsNullOrWhiteSpace(deviceAuthResponse?.device_code)
+            || string.IsNullOrWhiteSpace(deviceAuthResponse.user_code)
+            || !Uri.TryCreate(deviceAuthResponse.verification_uri, UriKind.Absolute, out var verificationUri)
+            || verificationUri.Scheme != Uri.UriSchemeHttps
+            || deviceAuthResponse.expires_in <= 0 || deviceAuthResponse.interval < 0)
         {
-            using HttpResponseMessage response = await _client.SendAsync(request);
-
-            response.EnsureSuccessStatusCode();
-            var stringData = await response.Content.ReadAsByteArrayAsync();
-            var deviceAuthResponse = JsonSerializer.Deserialize<DeviceAuthResponse>(stringData);
-
-            if (String.IsNullOrWhiteSpace(deviceAuthResponse?.device_code))
-            {
-                throw new InvalidOperationException("Failed to receive device_code for authentication");
-            }
-            return deviceAuthResponse;
+            throw new InvalidDataException("GitHub returned an invalid device authorization response.");
         }
-        catch (HttpRequestException ex)
-        {
-            throw new InvalidOperationException("Failed to initiate GitHub device authorization.", ex);
-        }
+        return deviceAuthResponse;
     }
 
     //poll the user_access token endpoint as long as expiration allows and user did not supply the verification id 
-    public async Task<string> GetUserAuthTokenAsync(DeviceAuthResponse authResponse)
+    public async Task<string> GetUserAuthTokenAsync(DeviceAuthResponse authResponse, CancellationToken cancellationToken = default)
     {
-        var userAuthResponse = new UserAuthResponse();
         var device_code = authResponse.device_code;
         var grant_type = "urn:ietf:params:oauth:grant-type:device_code";
         var endpoint = "https://github.com/login/oauth/access_token";
@@ -58,7 +51,7 @@ public class GitHubUserAuth
         //Continuously poll github api endpoint 
         while (DateTimeOffset.UtcNow <= expires_at)
         {
-            await Task.Delay(TimeSpan.FromSeconds(interval));
+            await Task.Delay(TimeSpan.FromSeconds(interval), cancellationToken);
             if (DateTimeOffset.UtcNow >= expires_at)
                 break;
             using var request = new HttpRequestMessage(
@@ -74,11 +67,11 @@ public class GitHubUserAuth
                     ["grant_type"] = grant_type
                 }
             );
-            using var response = await _client.SendAsync(request);
+            using var response = await _client.SendAsync(request, cancellationToken);
             response.EnsureSuccessStatusCode();
-            var stringData = await response.Content.ReadAsByteArrayAsync();
-            userAuthResponse = JsonSerializer.Deserialize<UserAuthResponse>(stringData);
-            if (!String.IsNullOrEmpty(userAuthResponse?.access_token))
+            var stringData = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+            var userAuthResponse = JsonSerializer.Deserialize<UserAuthResponse>(stringData);
+            if (!String.IsNullOrWhiteSpace(userAuthResponse?.access_token))
                 return userAuthResponse.access_token;
 
             switch (userAuthResponse?.error)
@@ -86,10 +79,10 @@ public class GitHubUserAuth
                 case "authorization_pending":
                     continue;
                 case "slow_down":
-                    interval = userAuthResponse?.interval ?? interval + 5;
+                    interval = Math.Max(userAuthResponse?.interval ?? interval + 5, interval + 5);
                     continue;
                 default:
-                    throw new InvalidOperationException(
+                    throw new InvalidDataException(
                     $"GitHub OAuth Error: {userAuthResponse?.error ?? "Unknown error"}"
                 );
             }
@@ -115,13 +108,25 @@ public class GitHubUserAuth
             cancellationToken: ct
         );
 
-        return json.RootElement
-        .GetProperty("installations")
-        .EnumerateArray()
-        .Select(i => (
-            Id: i.GetProperty("id").GetInt64(),
-            AccountLogin: i.GetProperty("account").GetProperty("login").GetString()!
-        ))
-        .ToList();
+        if (json.RootElement.ValueKind != JsonValueKind.Object
+            || !json.RootElement.TryGetProperty("installations", out var installations)
+            || installations.ValueKind != JsonValueKind.Array)
+            throw new InvalidDataException("GitHub returned an invalid installations response.");
+
+        var result = new List<(long installationId, string accountLogin)>();
+        foreach (var installation in installations.EnumerateArray())
+        {
+            if (installation.ValueKind != JsonValueKind.Object
+                || !installation.TryGetProperty("id", out var id)
+                || id.ValueKind != JsonValueKind.Number || !id.TryGetInt64(out long installationId)
+                || installationId <= 0
+                || !installation.TryGetProperty("account", out var account)
+                || account.ValueKind != JsonValueKind.Object
+                || !account.TryGetProperty("login", out var login)
+                || login.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(login.GetString()))
+                throw new InvalidDataException("GitHub returned an invalid installation.");
+            result.Add((installationId, login.GetString()!));
+        }
+        return result;
     }
 }

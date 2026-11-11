@@ -9,17 +9,22 @@ using OctokitClient = Octokit.GitHubClient;
 public class GitHubClientO
 {
     private readonly GitHubTokenProvider _tokenProvider;
-    public readonly ConcurrentDictionary<long, (string token, OctokitClient Client)> client_cache = new();
+    private readonly Func<long, Task<OctokitClient>>? _installationClientFactory;
+    private readonly ConcurrentDictionary<long, (string token, OctokitClient Client)> client_cache = new();
 
-    public GitHubClientO(GitHubTokenProvider tokenProvider)
+    public GitHubClientO(GitHubTokenProvider tokenProvider, Func<long, Task<OctokitClient>>? installationClientFactory = null)
     {
         _tokenProvider = tokenProvider;
+        _installationClientFactory = installationClientFactory;
     }
 
     //Create Octokit client
     //v2: Encapsulate and replace with client factory instance through CI 
     public async Task<OctokitClient> CreateClientAsync(long installationId)
     {
+        if (_installationClientFactory is not null)
+            return await _installationClientFactory(installationId);
+
         var check_token = await _tokenProvider.GetInstallationTokenAsync(installationId);
         if(client_cache.TryGetValue(installationId, out var cached) && cached.token == check_token)
         {
@@ -100,10 +105,4 @@ public class GitHubClientO
             encoderShouldEmitUTF8Identifier: false,
             throwOnInvalidBytes: true).GetString(bytes);
     }
-    
-
-    //
-
-
-
 }

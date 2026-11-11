@@ -35,7 +35,7 @@ public sealed class ScanWorker : BackgroundService
             }
             try
             {
-                await ProcessJobAsync(job);
+                await ProcessJobAsync(job, ct);
             }
             catch (OperationCanceledException)
                 when (ct.IsCancellationRequested)
@@ -50,7 +50,7 @@ public sealed class ScanWorker : BackgroundService
         }
     }
 
-    private async Task ProcessJobAsync(ScanJob job)
+    private async Task ProcessJobAsync(ScanJob job, CancellationToken ct)
     {
         if (!_store.UpdateStatus(job.JobId, ScanStatus.Running))
         {
@@ -73,7 +73,10 @@ public sealed class ScanWorker : BackgroundService
             Console.Error.WriteLine($"Could not create Check Run: {ex.Message}");
         } 
         }
+
         List<SecretFinding>? findings = null;
+        CheckConclusion conclusion;
+        var timeOut = TimeSpan.FromSeconds(5);
         try
         {
             using var scope = _scope.CreateScope();
@@ -86,7 +89,8 @@ public sealed class ScanWorker : BackgroundService
                 job.Login,
                 job.Name,
                 job.CommitSha,
-                job.JobId
+                job.JobId,
+                ct
             );
 
             if (!_store.Completion(job.JobId, results))
@@ -94,22 +98,27 @@ public sealed class ScanWorker : BackgroundService
                 throw new InvalidOperationException($"Could not store results for {job.JobId}");
             }
             findings = results;
+            conclusion = findings.Count.Equals(0)
+                        ? CheckConclusion.Success
+                        : CheckConclusion.Failure;
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            _store.UpdateStatus(job.JobId, ScanStatus.Failed);
+            conclusion = CheckConclusion.Cancelled;
+            Console.Error.WriteLine($"Shutdown cancelled scan for {job.Login}/{job.Name}");
+
         }
         catch (Exception ex)
         {
             _store.UpdateStatus(job.JobId, ScanStatus.Failed);
+            conclusion = CheckConclusion.Failure;
             Console.Error.WriteLine($"Scan failed for {job.Login}/{job.Name}: {ex}");
         }
         if (checkRunId.HasValue)
         {
             try
             {
-                CheckConclusion conclusion = findings is null
-                    ? CheckConclusion.Failure
-                    : findings.Count == 0
-                        ? CheckConclusion.Success
-                        : CheckConclusion.Failure;
-
                 await _checkrun.UpdateCheckRunAsync(
                     job.InstallationId,
                     job.Login,
@@ -117,7 +126,11 @@ public sealed class ScanWorker : BackgroundService
                     checkRunId.Value,
                     conclusion,
                     findings
-                );
+                ).WaitAsync(timeOut);
+            }
+            catch (TimeoutException)
+            {
+                Console.Error.WriteLine($"Check run update timed out");
             }
             catch (Exception ex)
             {

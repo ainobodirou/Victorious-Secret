@@ -12,8 +12,7 @@ public enum ScanStatus
     string CommitSha,
     string Name,
     string Login,
-    DateTime CreatedAt,
-    DateTime? FinishedAt = null
+    DateTime CreatedAt
 )
 {
     public ScanStatus Status {get; set;} = new();

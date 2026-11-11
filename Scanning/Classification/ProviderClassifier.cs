@@ -11,7 +11,7 @@ public class ProviderClassifier
         }
     }
 
-    public void RegisterRule(ProviderRule rule)
+    private void RegisterRule(ProviderRule rule)
     {
         if (_rules.TryGetValue(rule.Prefix, out var existingRules))
         {

@@ -102,38 +102,6 @@ if (app.Environment.IsDevelopment())
     }
     );
 
-//     app.MapGet("debug/get-findings", async (GitHubClientO client,
-//                                             ScanService ss) =>
-//     {
-//        long installationId = 173102585;
-//        var repositories = await client.GetAllRepos(installationId);
-//        var repository = repositories.First(r => 
-//        r.Name == "secret-test");
-
-       
-//        string commitSha = await client.GetDefaultBranchCommit(installationId, repository);
-
-//        var findings = await ss.RunScan(installationId, repository.Owner.Login, repository.Name ,commitSha, jobId);
-
-//        return Results.Ok(new
-//        {
-//            Repossitory = repository.FullName,
-//            CommitSha = commitSha,
-//            ExtractedLiteralcount = findings.Count,
-//            Locations = findings.Select(f => new
-//            {
-//                f.FilePath,
-//                f.LineNumber,
-//                f.CredentialType,
-//                f.Entropy,
-//                f.HasContext,
-//                f.DetectionMethod
-//            })
-//        });
-//     }
-//     );
-// };
-
 }
 app.Run();
 

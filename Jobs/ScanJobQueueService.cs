@@ -21,12 +21,15 @@ public sealed class ScanJobQueueSevice
         _scanQueue = Channel.CreateBounded<ScanJob>(options);
     }
 
-    public async ValueTask QueueScanJobAsync(ScanJob scanJob, CancellationToken cancellationToken)
+    public async ValueTask QueueScanJobAsync(ScanJob scanJob, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(scanJob);
 
-        await _scanQueue.Writer.WriteAsync(scanJob);
+        await _scanQueue.Writer.WriteAsync(scanJob, ct);
     }
+
+    public void Complete() => _scanQueue.Writer.TryComplete();
+
     public async ValueTask<ScanJob> DequeueScanJobAsync(CancellationToken cancellationToken)
 {
     ScanJob scanJob = await _scanQueue.Reader.ReadAsync(cancellationToken);

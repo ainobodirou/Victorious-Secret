@@ -6,7 +6,6 @@ using System.Net.Http.Json;
 public class ScanApiClient
 {
     private readonly HttpClient _client;
-    private readonly CancellationToken _cancellationToken;
 
     public ScanApiClient(
         HttpClient client
@@ -29,7 +28,12 @@ public class ScanApiClient
         response.EnsureSuccessStatusCode();
         ScanRequestResult? result =
             await response.Content.ReadFromJsonAsync<ScanRequestResult>(cancellationToken);
-        return result ?? throw new InvalidOperationException("Backend returned empty scan response!");
+        if (result is null || result.Message is null || result.jobIds is null
+            || result.jobIds.Any(id => id == Guid.Empty)
+            || result.NotSubmitted is null
+            || result.NotSubmitted.Any(entry => string.IsNullOrWhiteSpace(entry.Key) || string.IsNullOrWhiteSpace(entry.Value)))
+            throw new InvalidDataException("Backend returned an invalid scan response.");
+        return result;
     }
 
     public async Task<FindingsResponse?> GetFindingsAsync(
@@ -51,7 +55,13 @@ public class ScanApiClient
             return null;
         }
         response.EnsureSuccessStatusCode();
-        return await response.Content.ReadFromJsonAsync<FindingsResponse>(cancellationToken);
+        var result = await response.Content.ReadFromJsonAsync<FindingsResponse>(cancellationToken);
+        if (result is null || result.Findings is null || result.Failed is null
+            || result.Findings.Any(f => f is null || string.IsNullOrWhiteSpace(f.FilePath)
+                || f.LineNumber <= 0 || f.Provider is null || f.CredentialType is null || f.DetectionMethod is null)
+            || result.Failed.Any(f => f.Key == Guid.Empty || f.Value is null))
+            throw new InvalidDataException("Backend returned an invalid findings response.");
+        return result;
     }
 }
 

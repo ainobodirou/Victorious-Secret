@@ -22,16 +22,21 @@ public class ScanService
         ".env", ".txt", ".config"
     };
 
-    public async Task<List<SecretFinding>> RunScan(long installationId, string login, string name, string commitSha, Guid jobId)
+    public async Task<List<SecretFinding>> RunScan(long installationId, string login, string name, string commitSha, Guid jobId, CancellationToken ct)
     {
+
         List<SecretFinding> allFindings = new();
+
+        ct.ThrowIfCancellationRequested();
         TreeResponse tree = await _client.GetTreeAsync(installationId, login, name, commitSha);
+        ct.ThrowIfCancellationRequested();
 
         if (tree.Truncated)
             throw new InvalidOperationException("Git Tree is truncated: cannot complete scan");
 
         foreach (var item in tree.Tree)
         {
+            ct.ThrowIfCancellationRequested();
             if (item.Type != TreeType.Blob)
                 continue;
                 //later: filter binary, oversized and generated files!
@@ -44,6 +49,7 @@ public class ScanService
                 continue;
 
             string content;
+
             try
             {
                 content = await _client.GetFileContentAsync(installationId, login, name, item.Sha);
@@ -58,13 +64,15 @@ public class ScanService
                 item.Path,
                 content,
                 commitSha
-            ); 
+            );
 
+            ct.ThrowIfCancellationRequested();
             //Link the findings with the associated jobId
             allFindings.AddRange(
                 _detector.Detect(sourceFile).Select(f => f with {JobId = jobId})
             );
         }
+        ct.ThrowIfCancellationRequested();
         return allFindings;
     }
 }

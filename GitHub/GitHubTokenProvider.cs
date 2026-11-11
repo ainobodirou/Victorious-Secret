@@ -26,7 +26,7 @@ public class GitHubTokenProvider
         DateTimeOffset expiresAt
     );
 
-    public string GenerateAppJWt()
+    private string GenerateAppJWt()
     {
 
         using RSA rsa = LoadPrivateKey();

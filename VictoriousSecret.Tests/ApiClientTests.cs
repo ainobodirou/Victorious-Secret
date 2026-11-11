@@ -9,6 +9,61 @@ using Xunit;
 
 public class ApiClientTests
 {
+    [Theory]
+    [InlineData("{\"message\":\"queued\",\"scanJobs\":[]}")]
+    [InlineData("{\"message\":\"queued\",\"scanJobs\":[],\"notSubmitted\":{},\"submissionError\":null}")]
+    public async Task OldAndNewSubmissionResponsesAreCompatible(string body)
+    {
+        using var client = new HttpClient(new FakeHandler(new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json")
+        }));
+        var result = await new ScanApiClient(client).RequestAllAsync(42, "token");
+        Assert.Empty(result.NotSubmitted);
+        Assert.Null(result.SubmissionError);
+    }
+
+    [Theory]
+    [InlineData("{\"message\":\"queued\",\"scanJobs\":[],\"notSubmitted\":null}")]
+    [InlineData("{\"message\":\"queued\",\"scanJobs\":[],\"notSubmitted\":{\"owner/repo\":null}}")]
+    public async Task InvalidSubmissionProblemsAreRejected(string body)
+    {
+        using var client = new HttpClient(new FakeHandler(new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json")
+        }));
+        await Assert.ThrowsAsync<System.IO.InvalidDataException>(() => new ScanApiClient(client).RequestAllAsync(42, "token"));
+    }
+
+    [Theory]
+    [InlineData("null")]
+    [InlineData("{}")]
+    [InlineData("{\"message\":\"queued\"}")]
+    public async Task SubmissionRejectsMissingRequiredData(string body)
+    {
+        using var client = new HttpClient(new FakeHandler(new HttpResponseMessage(HttpStatusCode.Accepted)
+        {
+            Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json")
+        }));
+        await Assert.ThrowsAsync<System.IO.InvalidDataException>(() =>
+            new ScanApiClient(client).RequestAllAsync(42, "token"));
+    }
+
+    [Theory]
+    [InlineData("null")]
+    [InlineData("{}")]
+    [InlineData("{\"findings\":[],\"failed\":null}")]
+    [InlineData("{\"findings\":[{}],\"failed\":{}}")]
+    public async Task CompletedFindingsRejectMissingRequiredData(string body)
+    {
+        using var client = new HttpClient(new FakeHandler(new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json")
+        }));
+        await Assert.ThrowsAsync<System.IO.InvalidDataException>(() =>
+            new ScanApiClient(client).GetFindingsAsync([Guid.NewGuid()], "token", CancellationToken.None));
+    }
+
     [Fact]
     public async Task GetFindingsWhenProcessingReturnsNull()
     {
