@@ -31,15 +31,13 @@ public class GitHubCheckRunService
     public async Task UpdateCheckRunAsync(long installaitonId, string owner, string repo, long checkRunId, CheckConclusion conclusion, List<SecretFinding>? findings = null)
     {
         string summary;
-        if (findings is null) summary = "Secret scan could not be completed.";
-        else
-        {
-        string details = string.Join("/n", findings.Select(f =>
-        $" Found at: {f.FilePath} - Line {f.LineNumber}: Possible {f.CredentialType} from {f.Provider}." +
-        $"Detection method: {f.DetectionMethod}"
+        string details = string.Join("\n", findings.Select(f =>
+        $"- **{f.FilePath}:{f.LineNumber}** — " +
+        $"Possible {f.CredentialType} ({f.Provider}). " +
+        $"Detection: {f.DetectionMethod}"
         ));
-        summary = $"Potentia secrets detected: {findings.Count}\n\n{details}";    
-        }
+
+        summary = $"Potential secrets detected: {findings.Count}\n\n{details}";    
         var client = await _client.CreateClientAsync(installaitonId);
         var updateCheck = new CheckRunUpdate()
         {
