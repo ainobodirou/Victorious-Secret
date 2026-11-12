@@ -5,6 +5,11 @@ using System.Text.Json;
 
 public class CliTests
 {
+    private static HttpClient CreateClient(HttpMessageHandler handler) => new(handler)
+    {
+        BaseAddress = new Uri("http://localhost:5000/")
+    };
+
     private sealed class MemoryTokenStore : ITokenStore
     {
         public string? Token { get; private set; }
@@ -34,7 +39,7 @@ public class CliTests
         installations = new[] { new { id = 42L, account = new { login = "owner" } } }
     });
 
-    private static HttpClient NoNetworkClient() => new(new FakeHandler((_, _) =>
+    private static HttpClient NoNetworkClient() => CreateClient(new FakeHandler((_, _) =>
         throw new InvalidOperationException("Unexpected HTTP request.")));
 
     [Theory]
@@ -45,7 +50,7 @@ public class CliTests
     {
         var jobId = Guid.NewGuid();
         int calls = 0;
-        using var client = new HttpClient(new FakeHandler(async (request, ct) =>
+        using var client = CreateClient(new FakeHandler(async (request, ct) =>
         {
             switch (++calls)
             {
@@ -83,7 +88,7 @@ public class CliTests
     public async Task LoginSavesTokenAndLogoutRemovesIt()
     {
         int calls = 0;
-        using var client = new HttpClient(new FakeHandler(async (request, ct) =>
+        using var client = CreateClient(new FakeHandler(async (request, ct) =>
         {
             Assert.Equal(HttpMethod.Post, request.Method);
             if (++calls == 1)
@@ -145,7 +150,7 @@ public class CliTests
     {
         var jobId = Guid.NewGuid();
         int calls = 0;
-        using var client = new HttpClient(new FakeHandler(async (request, ct) =>
+        using var client = CreateClient(new FakeHandler(async (request, ct) =>
         {
             Assert.Equal("Bearer", request.Headers.Authorization!.Scheme);
             Assert.Equal("test-token", request.Headers.Authorization.Parameter);
@@ -186,7 +191,7 @@ public class CliTests
     public async Task InvalidSelectionDoesNotSubmit(string selection)
     {
         int calls = 0;
-        using var client = new HttpClient(new FakeHandler((_, _) =>
+        using var client = CreateClient(new FakeHandler((_, _) =>
         {
             calls++;
             return Task.FromResult(Installations());
@@ -202,7 +207,7 @@ public class CliTests
     [InlineData(503)]
     public async Task HttpErrorsReturnFailure(int status)
     {
-        using var client = new HttpClient(new FakeHandler((_, _) => Task.FromResult(new HttpResponseMessage((HttpStatusCode)status))));
+        using var client = CreateClient(new FakeHandler((_, _) => Task.FromResult(new HttpResponseMessage((HttpStatusCode)status))));
         var store = new MemoryTokenStore("token");
         var auth = new GitHubUserAuth("client", client);
         Assert.Equal(1, await new ScanHandler(auth, new ScanApiClient(client), store, output: new StringWriter()).HandleAsync(true, null));
@@ -214,7 +219,7 @@ public class CliTests
     public async Task CancellationReachesScanAndLoginRequests()
     {
         using var cts = new CancellationTokenSource();
-        using var client = new HttpClient(new FakeHandler(async (_, ct) =>
+        using var client = CreateClient(new FakeHandler(async (_, ct) =>
         {
             cts.Cancel();
             await Task.Delay(Timeout.Infinite, ct);
@@ -232,7 +237,7 @@ public class CliTests
     [InlineData("not-json")]
     public async Task MalformedInstallationsReturnFailure(string body)
     {
-        using var client = new HttpClient(new FakeHandler((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+        using var client = CreateClient(new FakeHandler((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
         { Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json") })));
         var handler = new ScanHandler(new GitHubUserAuth("client", client), new ScanApiClient(client),
             new MemoryTokenStore("token"), output: new StringWriter());
@@ -245,7 +250,7 @@ public class CliTests
     public async Task OAuthDenialOrMalformedDeviceResponseDoesNotSaveToken(bool denied)
     {
         int calls = 0;
-        using var client = new HttpClient(new FakeHandler((_, _) => Task.FromResult(++calls == 1 && denied
+        using var client = CreateClient(new FakeHandler((_, _) => Task.FromResult(++calls == 1 && denied
             ? Json(new { device_code = "device", user_code = "user", verification_uri = "https://github.com/login/device", expires_in = 60, interval = 0 })
             : Json(new { error = "access_denied" }))));
         var store = new MemoryTokenStore();

@@ -16,7 +16,7 @@ public class ScanApiClient
 
     public async Task<ScanRequestResult> RequestAllAsync(long installationId, string access_token, CancellationToken cancellationToken = default)
     {
-        string url = $"http://localhost:5000/api/scan/all?installationId={installationId}";
+        string url = $"api/scan/all?installationId={installationId}";
 
         using var request = new HttpRequestMessage(
             HttpMethod.Post, url
@@ -41,7 +41,7 @@ public class ScanApiClient
     string access_token,
     CancellationToken cancellationToken)
     {
-        string url = "http://localhost:5000/api/scan/findings";
+        string url = "api/scan/findings";
         using var request = new HttpRequestMessage(
             HttpMethod.Post, url
         );

@@ -2,13 +2,23 @@ using System.CommandLine;
 
 public class VSCli
 {
-    private const string clientId = "Iv23liWUWZclYZ27k5CA";
-
     public static async Task<int> Main(string[] args)
     {
-        using HttpClient httpClient = new();
-        var githubAuth = new GitHubUserAuth(clientId, httpClient);
-        var scanClient = new ScanApiClient(httpClient);
+        var apiUrl = Environment.GetEnvironmentVariable("VS_API_URL") ?? "http://localhost:5000";
+        var clientId = Environment.GetEnvironmentVariable("VS_GITHUB_CLIENT_ID") ?? "Iv23liWUWZclYZ27k5CA";
+        if (!Uri.TryCreate(apiUrl, UriKind.Absolute, out var apiUri) 
+        || (apiUri.Scheme != Uri.UriSchemeHttp && apiUri.Scheme != Uri.UriSchemeHttps))
+        {
+        Console.Error.WriteLine("VS_API_URL must be an absolute HTTP or HTTPS URL.");
+        return 1;
+        }
+        using var githubHttpClient = new HttpClient();
+        using var apiHttpClient = new HttpClient
+        {
+        BaseAddress = new Uri(apiUri.AbsoluteUri.TrimEnd('/') + "/")
+        };
+        var githubAuth = new GitHubUserAuth(clientId, githubHttpClient);
+        var scanClient = new ScanApiClient(apiHttpClient);
         var store = new TokenStore();
         var authHandler = new AuthHandler(githubAuth, store);
         var scanHandler = new ScanHandler(githubAuth, scanClient, store);

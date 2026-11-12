@@ -9,12 +9,17 @@ using Xunit;
 
 public class ApiClientTests
 {
+    private static HttpClient CreateClient(HttpMessageHandler handler) => new(handler)
+    {
+        BaseAddress = new Uri("http://localhost:5000/")
+    };
+
     [Theory]
     [InlineData("{\"message\":\"queued\",\"scanJobs\":[]}")]
     [InlineData("{\"message\":\"queued\",\"scanJobs\":[],\"notSubmitted\":{},\"submissionError\":null}")]
     public async Task OldAndNewSubmissionResponsesAreCompatible(string body)
     {
-        using var client = new HttpClient(new FakeHandler(new HttpResponseMessage(HttpStatusCode.OK)
+        using var client = CreateClient(new FakeHandler(new HttpResponseMessage(HttpStatusCode.OK)
         {
             Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json")
         }));
@@ -28,7 +33,7 @@ public class ApiClientTests
     [InlineData("{\"message\":\"queued\",\"scanJobs\":[],\"notSubmitted\":{\"owner/repo\":null}}")]
     public async Task InvalidSubmissionProblemsAreRejected(string body)
     {
-        using var client = new HttpClient(new FakeHandler(new HttpResponseMessage(HttpStatusCode.OK)
+        using var client = CreateClient(new FakeHandler(new HttpResponseMessage(HttpStatusCode.OK)
         {
             Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json")
         }));
@@ -41,7 +46,7 @@ public class ApiClientTests
     [InlineData("{\"message\":\"queued\"}")]
     public async Task SubmissionRejectsMissingRequiredData(string body)
     {
-        using var client = new HttpClient(new FakeHandler(new HttpResponseMessage(HttpStatusCode.Accepted)
+        using var client = CreateClient(new FakeHandler(new HttpResponseMessage(HttpStatusCode.Accepted)
         {
             Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json")
         }));
@@ -56,7 +61,7 @@ public class ApiClientTests
     [InlineData("{\"findings\":[{}],\"failed\":{}}")]
     public async Task CompletedFindingsRejectMissingRequiredData(string body)
     {
-        using var client = new HttpClient(new FakeHandler(new HttpResponseMessage(HttpStatusCode.OK)
+        using var client = CreateClient(new FakeHandler(new HttpResponseMessage(HttpStatusCode.OK)
         {
             Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json")
         }));
@@ -68,7 +73,7 @@ public class ApiClientTests
     public async Task GetFindingsWhenProcessingReturnsNull()
     {
         using var response = new HttpResponseMessage(HttpStatusCode.Accepted);
-        using var HttpClient = new HttpClient(new FakeHandler(response));
+        using var HttpClient = CreateClient(new FakeHandler(response));
         var scanClient = new ScanApiClient(HttpClient);
         List<Guid> jobIds = [Guid.NewGuid()];
 
@@ -89,7 +94,7 @@ public class ApiClientTests
                 failed = new Dictionary<Guid, string>()
             })
         };
-        using var HttpClient = new HttpClient(new FakeHandler(response));
+        using var HttpClient = CreateClient(new FakeHandler(response));
         var scanClient = new ScanApiClient(HttpClient);
 
         List<Guid> jobIds = [Guid.NewGuid()];
@@ -123,7 +128,7 @@ public class ApiClientTests
                 failed = new Dictionary<Guid, string>()
             })
         };
-        using var HttpClient = new HttpClient(new FakeHandler(response));
+        using var HttpClient = CreateClient(new FakeHandler(response));
         var scanClient = new ScanApiClient(HttpClient);
 
         FindingsResponse? result = await scanClient.GetFindingsAsync([Guid.NewGuid()], "test-token", CancellationToken.None);
