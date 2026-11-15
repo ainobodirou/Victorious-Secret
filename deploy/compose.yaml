@@ -7,8 +7,8 @@ services:
     ports:
       - "127.0.0.1:5000:5000"
     volumes:
-      - ./appsettings.json:/src/appsettings.json:ro
-      - ./secrets/github-app.pem:/run/secrets/github-app.pem:ro
+      - ../appsettings.json:/src/appsettings.json:ro
+      - ../secrets/github-app.pem:/run/secrets/github-app.pem:ro
     environment:
       ASPNETCORE_ENVIRONMENT: Production
     healthcheck:
