@@ -10,6 +10,7 @@ public class ProviderClassifier
             RegisterRule(rule);
         }
     }
+    // Register rules into rules ktrie 
 
     private void RegisterRule(ProviderRule rule)
     {
