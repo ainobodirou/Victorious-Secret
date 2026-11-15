@@ -126,6 +126,39 @@ public class RuleConfig
             "Shippo", "shippo_live_", "Live API Token",
             @"\Ashippo_live_[A-Fa-f0-9]{40}\z");
 
+        // Token formats from the Gitleaks v8.30.1 catalog, anchored to the candidate.
+        yield return Rule(
+            "GitLab", "glpat-", "Personal Access Token",
+            @"\Aglpat-[A-Za-z0-9_-]{20}\z");
+
+        yield return Rule(
+            "Linear", "lin_api_", "API Key",
+            @"\Alin_api_[A-Za-z0-9]{40}\z");
+
+        yield return Rule(
+            "npm", "npm_", "Access Token",
+            @"\Anpm_[A-Za-z0-9]{36}\z");
+
+        yield return Rule(
+            "Postman", "PMAK-", "API Key",
+            @"\APMAK-[A-Fa-f0-9]{24}-[A-Fa-f0-9]{34}\z");
+
+        yield return Rule(
+            "RubyGems", "rubygems_", "API Token",
+            @"\Arubygems_[a-f0-9]{48}\z");
+
+        yield return Rule(
+            "Sentry", "sntryu_", "User Auth Token",
+            @"\Asntryu_[a-f0-9]{64}\z");
+
+        yield return Rule(
+            "Stripe", "sk_test_", "Test-Mode Secret Key",
+            @"\Ask_test_[A-Za-z0-9]{10,99}\z");
+
+        yield return Rule(
+            "Shippo", "shippo_test_", "Test-Mode API Token",
+            @"\Ashippo_test_[A-Fa-f0-9]{40}\z");
+
         // GitHub — Personal Access Tokens
         yield return Rule(
             "GitHub", "ghp_", "Classic Personal Access Token",
