@@ -3,8 +3,21 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 
-public class CliTests
+public class CliTests : IDisposable
 {
+    private readonly string _configDirectory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+    private string ConfigPath => Path.Combine(_configDirectory, "config.json");
+
+    public void Dispose()
+    {
+        if (Directory.Exists(_configDirectory))
+            Directory.Delete(_configDirectory, recursive: true);
+    }
+
+    private AuthHandler CreateAuthHandler(HttpClient client, ITokenStore store)
+        => new(id => new GitHubUserAuth(id, client), store, new StringWriter(),
+            new StringReader("client"), ConfigPath);
+
     private static HttpClient CreateClient(HttpMessageHandler handler) => new(handler)
     {
         BaseAddress = new Uri("http://localhost:5000/")
@@ -71,7 +84,7 @@ public class CliTests
             }
         }));
         var output = new StringWriter();
-        var handler = new ScanHandler(new GitHubUserAuth("client", client), new ScanApiClient(client),
+        var handler = new ScanHandler(client, new ScanApiClient(client),
             new MemoryTokenStore("token"), new StringReader("1"), output);
         Assert.Equal(exitCode, await handler.HandleAsync(true, null));
         Assert.Equal(accepted ? 3 : 2, calls);
@@ -101,12 +114,56 @@ public class CliTests
             return Json(new { access_token = "new-token" });
         }));
         var store = new MemoryTokenStore("old-token");
-        var handler = new AuthHandler(new GitHubUserAuth("client", client), store, new StringWriter());
+        var handler = CreateAuthHandler(client, store);
         Assert.Equal(0, await handler.LoginAsync());
         Assert.Equal("new-token", store.GetToken());
         Assert.Equal(0, handler.Logout());
         Assert.Null(store.GetToken());
         Assert.Equal(1, handler.Logout());
+        Assert.Equal("client", JsonSerializer.Deserialize<CliConfig>(await File.ReadAllTextAsync(ConfigPath))!.GitHubClientId);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task DeviceFlowUsesTheClientIdThatIssuedTheCode(bool rejected)
+    {
+        var requests = new List<string>();
+        using var client = CreateClient(new FakeHandler(async (request, ct) =>
+        {
+            var uri = request.RequestUri!;
+            requests.Add(uri.AbsolutePath);
+            if (uri.AbsolutePath == "/login/device/code")
+            {
+                Assert.Equal("?client_id=custom", uri.Query);
+                if (rejected)
+                    return new HttpResponseMessage(HttpStatusCode.NotFound);
+                return Json(new { device_code = "device", user_code = "user", verification_uri = "https://github.com/login/device", expires_in = 60, interval = 0 });
+            }
+
+            Assert.Equal("/login/oauth/access_token", uri.AbsolutePath);
+            Assert.Contains("client_id=custom&", await request.Content!.ReadAsStringAsync(ct));
+            return Json(new { access_token = "new-token" });
+        }));
+        var store = new MemoryTokenStore();
+        var output = new StringWriter();
+        var handler = new AuthHandler(id => new GitHubUserAuth(id, client), store,
+            output, new StringReader("  custom  "), ConfigPath);
+
+        Assert.Equal(rejected ? 1 : 0, await handler.LoginAsync());
+        if (rejected)
+        {
+            Assert.Equal(new[] { "/login/device/code" }, requests);
+            Assert.Contains("GitHub rejected the device authorization request (404).", output.ToString());
+            Assert.Null(store.GetToken());
+            Assert.False(File.Exists(ConfigPath));
+        }
+        else
+        {
+            Assert.Equal(new[] { "/login/device/code", "/login/oauth/access_token" }, requests);
+            Assert.Equal("new-token", store.GetToken());
+            Assert.Equal("custom", JsonSerializer.Deserialize<CliConfig>(await File.ReadAllTextAsync(ConfigPath))!.GitHubClientId);
+        }
     }
 
     [Theory]
@@ -118,11 +175,10 @@ public class CliTests
     public async Task InvalidOrUnimplementedCommandsReturnFailureWithoutNetwork(string command)
     {
         using var client = NoNetworkClient();
-        var auth = new GitHubUserAuth("client", client);
         var store = new MemoryTokenStore();
         var output = new StringWriter();
-        var root = VSCli.CreateRootCommand(new AuthHandler(auth, store, output),
-            new ScanHandler(auth, new ScanApiClient(client), store, new StringReader("1"), output));
+        var root = VSCli.CreateRootCommand(new AuthHandler(id => new GitHubUserAuth(id, client), store, output),
+            new ScanHandler(client, new ScanApiClient(client), store, new StringReader("1"), output));
         Assert.Equal(1, await root.Parse(command).InvokeAsync());
         if (command is "auth status" or "scan --repo owner/repo")
             Assert.Contains("not implemented yet", output.ToString());
@@ -132,9 +188,8 @@ public class CliTests
     public async Task HelpPreservesAdvertisedCommandsAndOptions()
     {
         using var client = NoNetworkClient();
-        var auth = new GitHubUserAuth("client", client);
         var store = new MemoryTokenStore();
-        var root = VSCli.CreateRootCommand(new AuthHandler(auth, store), new ScanHandler(auth, new ScanApiClient(client), store));
+        var root = VSCli.CreateRootCommand(new AuthHandler(id => new GitHubUserAuth(id, client), store), new ScanHandler(client, new ScanApiClient(client), store));
         Assert.Equal(0, await root.Parse("auth --help").InvokeAsync());
         Assert.Equal(0, await root.Parse("scan --help").InvokeAsync());
         var authCommand = Assert.Single(root.Subcommands, c => c.Name == "auth");
@@ -177,7 +232,7 @@ public class CliTests
             }
         }));
         var output = new StringWriter();
-        var handler = new ScanHandler(new GitHubUserAuth("client", client), new ScanApiClient(client),
+        var handler = new ScanHandler(client, new ScanApiClient(client),
             new MemoryTokenStore("test-token"), new StringReader("1"), output);
         Assert.Equal(expectedExit, await handler.HandleAsync(true, null));
         Assert.Equal(4, calls);
@@ -196,7 +251,7 @@ public class CliTests
             calls++;
             return Task.FromResult(Installations());
         }));
-        var handler = new ScanHandler(new GitHubUserAuth("client", client), new ScanApiClient(client),
+        var handler = new ScanHandler(client, new ScanApiClient(client),
             new MemoryTokenStore("token"), new StringReader(selection), new StringWriter());
         Assert.Equal(1, await handler.HandleAsync(true, null));
         Assert.Equal(1, calls);
@@ -209,14 +264,15 @@ public class CliTests
     {
         using var client = CreateClient(new FakeHandler((_, _) => Task.FromResult(new HttpResponseMessage((HttpStatusCode)status))));
         var store = new MemoryTokenStore("token");
-        var auth = new GitHubUserAuth("client", client);
-        Assert.Equal(1, await new ScanHandler(auth, new ScanApiClient(client), store, output: new StringWriter()).HandleAsync(true, null));
-        Assert.Equal(1, await new AuthHandler(auth, store, new StringWriter()).LoginAsync());
+        Assert.Equal(1, await new ScanHandler(client, new ScanApiClient(client), store, output: new StringWriter()).HandleAsync(true, null));
+        Assert.Equal(1, await CreateAuthHandler(client, store).LoginAsync());
         Assert.Equal("token", store.GetToken());
     }
 
-    [Fact]
-    public async Task CancellationReachesScanAndLoginRequests()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CancellationReachesScanAndLoginRequests(bool login)
     {
         using var cts = new CancellationTokenSource();
         using var client = CreateClient(new FakeHandler(async (_, ct) =>
@@ -225,10 +281,12 @@ public class CliTests
             await Task.Delay(Timeout.Infinite, ct);
             throw new InvalidOperationException("Unreachable");
         }));
-        var auth = new GitHubUserAuth("client", client);
-        Assert.Equal(103, await new ScanHandler(auth, new ScanApiClient(client), new MemoryTokenStore("token"), output: new StringWriter())
-            .HandleAsync(true, null, cts.Token));
-        Assert.Equal(103, await new AuthHandler(auth, new MemoryTokenStore(), new StringWriter()).LoginAsync(cts.Token));
+        var result = login
+            ? await CreateAuthHandler(client, new MemoryTokenStore()).LoginAsync(cts.Token)
+            : await new ScanHandler(client, new ScanApiClient(client), new MemoryTokenStore("token"), output: new StringWriter())
+                .HandleAsync(true, null, cts.Token);
+        Assert.Equal(103, result);
+        Assert.True(cts.IsCancellationRequested);
     }
 
     [Theory]
@@ -239,7 +297,7 @@ public class CliTests
     {
         using var client = CreateClient(new FakeHandler((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
         { Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json") })));
-        var handler = new ScanHandler(new GitHubUserAuth("client", client), new ScanApiClient(client),
+        var handler = new ScanHandler(client, new ScanApiClient(client),
             new MemoryTokenStore("token"), output: new StringWriter());
         Assert.Equal(1, await handler.HandleAsync(true, null));
     }
@@ -254,7 +312,8 @@ public class CliTests
             ? Json(new { device_code = "device", user_code = "user", verification_uri = "https://github.com/login/device", expires_in = 60, interval = 0 })
             : Json(new { error = "access_denied" }))));
         var store = new MemoryTokenStore();
-        Assert.Equal(1, await new AuthHandler(new GitHubUserAuth("client", client), store, new StringWriter()).LoginAsync());
+        Assert.Equal(1, await CreateAuthHandler(client, store).LoginAsync());
         Assert.Null(store.GetToken());
+        Assert.False(File.Exists(ConfigPath));
     }
 }

@@ -98,14 +98,9 @@ The `webhooks` profile starts ngrok as a separate container. Without the profile
 
 ## Minimal CLI setup
 
-Set configuration in the shell where you will run the CLI. These commands use Bash/Zsh syntax and do not require a particular working directory:
+Run `vs auth login` to start GitHub Device Flow. If there is no saved GitHub App Client ID, the CLI prompts for one and saves it to your per-user config after successful authorization. Later logins reuse the saved ID, and logout keeps it. If GitHub rejects a newly entered ID, the CLI reports the error without saving it.
 
-```sh
-export VS_API_URL="http://localhost:5000"
-export VS_GITHUB_CLIENT_ID="your-github-app-client-id"
-```
-
-`VS_API_URL` defaults to `http://localhost:5000`. Override it if the backend uses another host or published port. `VS_GITHUB_CLIENT_ID` defaults to the VictoriousSecret GitHub App's client ID; override it when using your own GitHub App. The client ID is public configuration, not a client secret.
+`VS_API_URL` defaults to `http://localhost:5000`. Override it if the backend uses another host or published port.
 
 The installed CLI does not automatically read `.env` or the backend's `appsettings.json`. For a hosted backend, point `VS_API_URL` to an address exposing the scan API routes; the supplied ngrok policy exposes only the webhook route.
 

@@ -5,7 +5,6 @@ public class VSCli
     public static async Task<int> Main(string[] args)
     {
         var apiUrl = Environment.GetEnvironmentVariable("VS_API_URL") ?? "http://localhost:5000";
-        var clientId = Environment.GetEnvironmentVariable("VS_GITHUB_CLIENT_ID") ?? "Iv23liWUWZclYZ27k5CA";
         if (!Uri.TryCreate(apiUrl, UriKind.Absolute, out var apiUri) 
         || (apiUri.Scheme != Uri.UriSchemeHttp && apiUri.Scheme != Uri.UriSchemeHttps))
         {
@@ -17,11 +16,14 @@ public class VSCli
         {
         BaseAddress = new Uri(apiUri.AbsoluteUri.TrimEnd('/') + "/")
         };
-        var githubAuth = new GitHubUserAuth(clientId, githubHttpClient);
+    
         var scanClient = new ScanApiClient(apiHttpClient);
         var store = new TokenStore();
-        var authHandler = new AuthHandler(githubAuth, store);
-        var scanHandler = new ScanHandler(githubAuth, scanClient, store);
+        var authHandler = new AuthHandler(
+            clientId => new GitHubUserAuth(clientId, githubHttpClient),
+            store);
+            
+        var scanHandler = new ScanHandler(githubHttpClient, scanClient, store);
         return await CreateRootCommand(authHandler, scanHandler).Parse(args).InvokeAsync();
     }
 

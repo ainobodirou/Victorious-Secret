@@ -3,16 +3,16 @@ using System.Text.Json;
 
 public sealed class ScanHandler
 {
-    private readonly GitHubUserAuth _githubAuth;
+    private readonly HttpClient _githubHttpClient;
     private readonly ScanApiClient _scanClient;
     private readonly ITokenStore _store;
     private readonly TextReader _input;
     private readonly TextWriter _output;
 
-    public ScanHandler(GitHubUserAuth githubAuth, ScanApiClient scanClient, ITokenStore store,
+    public ScanHandler(HttpClient githubHttpClient, ScanApiClient scanClient, ITokenStore store,
         TextReader? input = null, TextWriter? output = null)
     {
-        _githubAuth = githubAuth;
+        _githubHttpClient = githubHttpClient;
         _scanClient = scanClient;
         _store = store;
         _input = input ?? Console.In;
@@ -45,7 +45,7 @@ public sealed class ScanHandler
         try
         {
             _output.WriteLine("Listing all available VS installations...");
-            var installations = await _githubAuth.GetInstallationsAsync(token, cts.Token);
+            var installations = await GitHubUserAuth.GetInstallationsAsync(_githubHttpClient, token, cts.Token);
             if (installations.Count == 0)
             {
                 _output.WriteLine("No available installations.");

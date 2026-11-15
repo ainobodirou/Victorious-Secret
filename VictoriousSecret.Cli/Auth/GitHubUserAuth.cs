@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
 
@@ -24,6 +25,10 @@ public class GitHubUserAuth
             new MediaTypeWithQualityHeaderValue("application/json")
         );
         using HttpResponseMessage response = await _client.SendAsync(request, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+            throw new HttpRequestException(
+                "GitHub rejected the device authorization request (404). Check the GitHub App's Client ID and that Device Flow is enabled.",
+                null, response.StatusCode);
         response.EnsureSuccessStatusCode();
         var stringData = await response.Content.ReadAsByteArrayAsync(cancellationToken);
         var deviceAuthResponse = JsonSerializer.Deserialize<DeviceAuthResponse>(stringData);
@@ -90,7 +95,8 @@ public class GitHubUserAuth
         throw new TimeoutException("GitHub device authorization expired before completion.");
     }
 
-    public async Task<List<(long installationId, string accountLogin)>> GetInstallationsAsync(string access_token, CancellationToken ct = default)
+    public static async Task<List<(long installationId, string accountLogin)>> GetInstallationsAsync(
+        HttpClient client, string access_token, CancellationToken ct = default)
     {
         using var request = new HttpRequestMessage(
             HttpMethod.Get,
@@ -100,7 +106,7 @@ public class GitHubUserAuth
         request.Headers.UserAgent.ParseAdd("VictoriousSecretCLI/1.0");
         request.Headers.Accept.ParseAdd("application/vnd.github+json");
 
-        using var response = await _client.SendAsync(request, ct);
+        using var response = await client.SendAsync(request, ct);
         response.EnsureSuccessStatusCode();
 
         using var json = await JsonDocument.ParseAsync(
