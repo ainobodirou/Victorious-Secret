@@ -151,6 +151,13 @@ public class ScanController: Controller
         }
     }
 
+    // Instead of implementing another method for single repository retrieval and job creation 
+    // Refactor scan-all to build the job stack for submission iterevaly supporting single and multi
+    // - repository scans, enforced at CLI runtime, already packaged at the api client edge 
+    // this way we avoid extra endpoint with extra submission method 
+    // RequestScanForAllAsync can be refactored into 2 helper methods for readability
+
+
     [HttpPost("findings")]
     public IActionResult GetFindings([FromBody] List<Guid> jobIds)
     {
