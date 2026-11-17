@@ -10,8 +10,6 @@ builder.Services.Configure<GitHubAppOptions>(builder.Configuration.GetSection("G
 builder.Services.AddMemoryCache();
 //Add GitHub checkRun service
 builder.Services.AddSingleton<GitHubCheckRunService>();
-//Add token provider
-builder.Services.AddSingleton<GitHubTokenProvider>();
 //Add Octokit client
 builder.Services.AddSingleton<GitHubClientO>();
 //Configure HttpClient for GitHubTokenProvider
@@ -31,8 +29,6 @@ builder.Services.AddHttpClient<GitHubTokenProvider>(
             )
         );
     });
-
-
 builder.Services
     .AddAuthentication("GitHub")
     .AddScheme<AuthenticationSchemeOptions, GitHubAuthHandler>(
@@ -40,8 +36,6 @@ builder.Services
         options => { });
 
 builder.Services.AddAuthorization();
-builder.Services.AddHttpClient();
-
 builder.Services.AddControllers();
 builder.Services.AddTransient<ScanService>(); //Main Scan Orchestrator for all inputs
 builder.Services.AddTransient<SecretDetector>(); //Secret Detection handling and logic
