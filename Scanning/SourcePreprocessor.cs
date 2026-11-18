@@ -4,9 +4,10 @@ using System.Text.RegularExpressions;
 // extracts regex-matched literals and returns a loaded record of ExtractedLiteral type
 
 public class SourcePreprocessor{
-    private static readonly Regex MatchPattern = new ("""(?<name>\w+)\s*=\s*"(?<value>[^"\r\n]*)" """.TrimEnd(),
-        RegexOptions.Compiled,
-        TimeSpan.FromMilliseconds(200)
+    private static readonly Regex MatchPattern = new(
+    """["']?(?<name>\w+)["']?[ \t]*[=:][ \t]*(?:"(?<value>(?:\\[^\r\n]|[^"\\\r\n])*)"|'(?<value>(?:\\[^\r\n]|[^'\\\r\n])*)'|(?<value>[^"'\s;,}\]]+))""",
+    RegexOptions.Compiled,
+    TimeSpan.FromMilliseconds(200)
     );
     
     public IEnumerable<ExtractedLiteral> Extract(SourceFile file)
